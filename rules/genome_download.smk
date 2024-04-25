@@ -2,10 +2,10 @@
 # This is where your processing happens, ensuring the expected outputs are created
 
 rule process_species:
-    output: # Ensure this is not defined with wildcards here
-        touch("{species_dir}/genome/genome.fa")
+    output:
+        genome_fa = "{species_dir}/genome/genome.fa"
     shell:
         """
-        mkdir -p {output[0].rsplit('/', 1)[0]}
-        touch {output[0]}
+        mkdir -p {Path(output.genome_fa).parent}
+        touch {output.genome_fa}
         """

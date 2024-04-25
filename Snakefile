@@ -12,6 +12,7 @@ __author__ = "Katharina J. Hoff, Stepan Saenko, Clara Pitzschel"
 
 import configparser
 import pandas as pd
+from pathlib import Path
 
 # Load and parse the config file
 config = configparser.ConfigParser()
