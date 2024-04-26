@@ -14,6 +14,7 @@ import configparser
 import pandas as pd
 from pathlib import Path
 import json
+import re
 
 # Load and parse the config file
 config = configparser.ConfigParser()
@@ -34,5 +35,5 @@ include: "rules/genome_download.smk"
 # Main rule to process each taxon
 rule all:
     input:
-        expand("data/{taxon}_download.sh", taxon=taxa_list)
+        expand("data/{taxon}_download.done", taxon=taxa_list)
 
