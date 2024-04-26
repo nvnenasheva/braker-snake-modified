@@ -69,9 +69,11 @@ Call with (currently only dry runs, but I tested that the singularity container 
 ```
 # only on BRAIN cluster:
 module load singularity
+# on BRAIN, pull snakemake
+singularity build snakemake.sif docker://snakemake/snakemake:latest
 # generally if singularity is available:
 cd braker-snake
-snakemake --cores 1 --use-singularity
+singularity exec -B $PWD:$PWD snakemake.sif snakemake --cores 1 --use-singularity
 ```
 
 
