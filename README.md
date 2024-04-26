@@ -31,7 +31,7 @@ Go do a directory where you have space for many GBs of data. Clone the repositor
 
 ```git clone https://github.com/KatharinaHoff/braker-snake.git```
 
-Python dependencies:
+Python dependencies (on BRAIN, you may first have to install conda, then install pip with conda, then install pandas with pip):
 
 ```
 pip install pandas
@@ -75,6 +75,6 @@ module load singularity
 singularity build snakemake.sif docker://snakemake/snakemake:latest
 # generally if singularity is available:
 cd braker-snake
-singularity exec -B $PWD:$PWD snakemake.sif snakemake --cores 1 --use-singularity
+singularity exec -B $PWD:$PWD snakemake.sif snakemake --cores 2 --use-singularity
 ```
 
