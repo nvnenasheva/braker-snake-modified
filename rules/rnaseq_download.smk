@@ -73,7 +73,8 @@ rule retrieve_rnaseq_info_from_sra:
 #     the completion of the task.
 rule download_fastq:
     input:
-        fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst"
+        fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
+        genome_done = "data/{taxon}_download.done" # This is a dummy file to ensure that the download rule is executed after the retrieval rule
     output:
         done = "data/{taxon}_fastqdump.done"
     singularity:
@@ -84,20 +85,27 @@ rule download_fastq:
 
         # Read the input file and process it
         while IFS=$'\\t' read -r species sra_ids; do
+            echo "$PWD" &>> data/{wildcards.taxon}_fastqdump.log
             species_fixed=$(echo "$species" | sed 's/ /_/g')  # Replace space with underscore
-            cd data/$species_fixed
+            echo "cd data/species/$species_fixed" &>> data/{wildcards.taxon}_fastqdump.log
+            cd data/species/$species_fixed
+            echo "mkdir fastq" &>> data/{wildcards.taxon}_fastqdump.log
             mkdir fastq  # Create a directory for the species
-            cd ../../
+            echo "cd ../../../" &>> data/{wildcards.taxon}_fastqdump.log
+            cd ../../../ 
+            echo "$PWD" &>> data/{wildcards.taxon}_fastqdump.log
             # Convert comma-separated string to array
             IFS=',' read -ra ids <<< "$sra_ids"
 
             # Process each SRA ID locally using the array
             for id in "${{ids[@]}}"; do
+                echo "fastq-dump --split-files --outdir data/$species_fixed/fastq $id" &>> data/{wildcards.taxon}_fastqdump.log
                 fastq-dump --split-files --outdir data/$species_fixed/fastq $id
-                gzip data/$species_fixed/fastq/${{id}}_1.fastq
-                gzip data/$species_fixed/fastq/${{id}}_2.fastq
+                echo "gzip data/species/$species_fixed/fastq/${{id}}_1.fastq" &>> data/{wildcards.taxon}_fastqdump.log
+                gzip data/species/$species_fixed/fastq/${{id}}_1.fastq
+                gzip data/species/$species_fixed/fastq/${{id}}_2.fastq
             done
-        done < {input.fastqdump_lst} &> data/{wildcards.taxon}_fastqdump.log
+        done < {input.fastqdump_lst} &>> data/{wildcards.taxon}_fastqdump.log
         
         touch {output.done}
         """

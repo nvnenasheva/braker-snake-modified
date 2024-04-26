@@ -232,8 +232,7 @@ rule prepare_download_assemblies_from_ncbi:
                     command += f"mv ncbi_dataset/data/{row['accession']}/*.gtf annot/annot.gtf;"
                     command += f"mkdir prot;"
                     command += f"mv ncbi_dataset/data/{row['accession']}/*.faa prot/protein.faa;"
-                    command += f"rm -rf ncbi_dataset {row['accession']}_assembly.zip; cd ../../..;"
-                    command += f"rm README.md\n"
+                    command += f"rm -rf ncbi_dataset {row['accession']}_assembly.zip; rm README.md; cd ../../..;"
                 outfile.write(command)
         except IOError:
             raise Exception(f"Error writing to file: {output.download_script}")
