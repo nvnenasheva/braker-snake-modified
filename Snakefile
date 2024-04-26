@@ -31,9 +31,12 @@ unique_odb_partitions = data['odb_partition'].unique().tolist()
 
 # Include other rule files (assuming they define their own targets without using wildcards inappropriately)
 include: "rules/genome_download.smk"
+include: "rules/odb_download.smk"
+include: "rules/rnaseq_download.smk"
 
 # Main rule to process each taxon
 rule all:
     input:
-        expand("data/{taxon}_download.done", taxon=taxa_list)
+        expand("data/{taxon}_download.done", taxon=taxa_list),
+        expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions)
 
