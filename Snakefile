@@ -39,4 +39,6 @@ rule all:
     input:
         expand("data/{taxon}_download.done", taxon=taxa_list),
         expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions)
+        # This is the place where you have to expand when you are waiting for more targets! For example,
+        # we will implement RNA-Seq download, and this is where you have to add the RNA-Seq targets.
 
