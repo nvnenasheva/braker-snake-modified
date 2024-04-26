@@ -96,6 +96,7 @@ rule download_fastq:
             if [ ! -d "fastq" ]; then
                 echo "mkdir fastq" &>> $logfile
                 mkdir fastq  # Create a directory for the species
+            fi
             echo "cd ../../../" &>> $logfile
             cd ../../../ 
             echo "$PWD" &>> $logfile
