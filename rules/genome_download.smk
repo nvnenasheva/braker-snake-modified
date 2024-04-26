@@ -1,8 +1,40 @@
+# Rule: download_assembly_info
+# Purpose:
+# This rule automates the process of downloading genome assembly data for a specified taxon
+# from the NCBI database. It utilizes the NCBI datasets command-line tool within a Singularity
+# container to ensure environment consistency and reproducibility. The downloaded data is
+# initially compressed into a ZIP file, which is then extracted, and the relevant JSONL file
+# containing assembly data is moved to a specified directory.
+#
+# Inputs:
+#   - None directly specified, but the rule uses a parameter 'taxon' derived from wildcards,
+#     typically provided by upstream rules or workflow orchestration.
+#
+# Outputs:
+#   - raw_json: A JSONL file containing detailed assembly information for the specified taxon.
+#     This file is used in downstream analysis and must be stored in the 'data' directory.
+#
+# Singularity:
+#   - Uses a Docker container 'katharinahoff/varus-notebook:v0.0.1' converted to Singularity
+#     image format, ensuring that the NCBI datasets tool and all its dependencies are correctly
+#     configured and isolated from the host environment.
+#
+# Steps Executed:
+# 1. Set up a bind mount to ensure current working directory ('${PWD}') is accessible inside the Singularity container.
+# 2. Execute the 'datasets download genome' command specifying the taxon, source database (GenBank), and download format (dehydrated).
+# 3. Unzip the downloaded file to a specified sub-directory.
+# 4. Move the assembly data report (JSONL format) to the designated output location.
+# 5. Clean up all intermediate files and directories to maintain a clean working environment.
+#
+# This rule is critical for ensuring that up-to-date genomic data is available for analysis,
+# allowing researchers to base their studies on the most recent and comprehensive data available.
 rule download_assembly_info:
     output:
         raw_json = "data/{taxon}.json"
     params:
         taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
     singularity:
         "docker://katharinahoff/varus-notebook:v0.0.1"
     shell:
@@ -14,6 +46,26 @@ rule download_assembly_info:
         rm -rf {params.taxon}_ncbi_dataset {params.taxon}_ncbi.zip
         """
 
+
+# Rule: assembly_json_to_tbl
+# Purpose:
+# This rule processes JSON files containing genome assembly metadata for different taxa.
+# Each JSON file may contain one or multiple JSON objects representing different assembly reports.
+# The rule reads the JSON file, parses multiple JSON objects if present, and then extracts
+# relevant fields to produce a tab-separated values (TSV) file. The output file includes columns for
+# accession, species name, assembly status, protein coding gene counts, contig N50 size, and the refSeq category.
+# This rule handles JSON reading and parsing errors and will raise exceptions if files cannot be read or written.
+#
+# Input:
+#   json_file - Path to the JSON file for a specific taxon, located in the 'data' directory.
+# Output:
+#   processed_tbl - Path to the output TSV file which will also be located in the 'data' directory.
+# Processing Steps:
+# 1. Read the entire JSON file content.
+# 2. Split the content into individual JSON strings based on a specified delimiter.
+# 3. Convert each JSON string back into a JSON object (dictionary) and handle any JSON parsing errors.
+# 4. Extract the required information from each JSON object and write it to the output TSV file.
+# 5. Handle and report any file input/output errors during reading and writing operations.
 rule assembly_json_to_tbl:
     input:
         json_file = "data/{taxon}.json"
@@ -21,6 +73,8 @@ rule assembly_json_to_tbl:
         processed_tbl = "data/{taxon}.tbl"
     params:
         taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
     run:
         taxon = wildcards.taxon
         print(taxon)
@@ -62,4 +116,68 @@ rule assembly_json_to_tbl:
         except IOError:
             raise Exception(f"Error writing to file: {tbl_file_path}")
 
-                    
+
+# Rule: classify_species
+# Purpose:
+# This rule is designed to classify species based on their protein counts from genome assembly data.
+# It separates the species into two categories: those that are well-annotated (with protein counts
+# exceeding 1000) and those that are either poorly annotated or have missing protein data ('N/A').
+#
+# Inputs:
+#   - tbl_file: A tab-separated file ('.tbl') for each taxon, containing genome assembly data.
+#     This file includes various metrics among which are protein counts.
+#
+# Outputs:
+#   - already_annotated_tbl: Outputs a file listing species that are considered well-annotated.
+#   - not_annotated_tbl: Outputs a file listing species that are either not well-annotated or
+#     whose protein count data is missing.
+#
+# Parameters:
+#   - taxon: A wildcard parameter that dynamically accepts the name of the taxon from the workflow.
+#
+# Processing Steps:
+# 1. Read the input TBL file into a pandas DataFrame. Non-numeric 'proteins' values are converted to NaN
+#    to facilitate numerical operations and comparisons.
+# 2. Filter the DataFrame to create two subsets:
+#    - 'annotated_data': Contains entries with protein counts greater than 1000.
+#      This subset is further processed to keep only the highest quality genome per species,
+#      prioritized by 'refseqCategory' and the highest protein count.
+#    - 'blank_data': Contains entries with protein counts less than or equal to 1000 or with missing protein data.
+#      This subset is sorted by 'contigN50' to prioritize genomes based on genome assembly quality, keeping the
+#      highest 'contigN50' value per species.
+# 3. Both subsets are written to separate output files in a tab-separated format.
+rule classify_species:
+    input:
+        tbl_file = "data/{taxon}.tbl"
+    output:
+        already_annotated_tbl = "data/{taxon}_annotated.tbl",
+        not_annotated_tbl = "data/{taxon}_blank.tbl"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    run:
+        taxon = wildcards.taxon
+        tbl_file_path = f"data/{taxon}.tbl"
+        annotated_tbl_path = f"data/{taxon}_annotated.tbl"
+        blank_tbl_path = f"data/{taxon}_blank.tbl"
+        
+        # Read the data, handling non-numeric proteins values
+        try:
+            data = pd.read_csv(tbl_file_path, sep="\t")
+            data['proteins'] = pd.to_numeric(data['proteins'], errors='coerce')  # Convert 'N/A' to NaN
+        except IOError:
+            raise Exception(f"Error reading file: {tbl_file_path}")
+
+        # Annotated data filter
+        annotated_data = data[data['proteins'] > 1000]
+        annotated_data = annotated_data.sort_values(by=['refseqCategory', 'proteins'], ascending=[False, False]).drop_duplicates(subset='species', keep='first')
+
+        # Blank data filter
+        blank_data = data[(data['proteins'] <= 1000) | (data['proteins'].isna())]
+        blank_data = blank_data.sort_values(by=['contigN50'], ascending=False).drop_duplicates(subset='species', keep='first')
+
+        # Output data to files
+        try:
+            annotated_data.to_csv(annotated_tbl_path, sep="\t", index=False)
+            blank_data.to_csv(blank_tbl_path, sep="\t", index=False)
+        except IOError:
+            raise Exception(f"Error writing to file: {annotated_tbl_path} or {blank_tbl_path}")

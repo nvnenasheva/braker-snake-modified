@@ -34,5 +34,5 @@ include: "rules/genome_download.smk"
 # Main rule to process each taxon
 rule all:
     input:
-        expand("data/{taxon}.tbl", taxon=taxa_list)
+        expand("data/{taxon}_annotated.tbl", taxon=taxa_list)
 
