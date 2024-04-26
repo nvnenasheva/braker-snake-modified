@@ -40,7 +40,7 @@ rule download_assembly_info:
         datasets download genome taxon "{params.taxon}" --assembly-source genbank --dehydrated --filename {params.taxon}_ncbi.zip; \
         unzip -o {params.taxon}_ncbi.zip -d {params.taxon}_ncbi_dataset; \
         mv {params.taxon}_ncbi_dataset/ncbi_dataset/data/assembly_data_report.jsonl {output.raw_json}; \
-        rm -rf {params.taxon}_ncbi_dataset {params.taxon}_ncbi.zip; \
+        rm -rf {params.taxon}_ncbi_dataset {params.taxon}_ncbi.zip README.md; \
         mkdir -p data/species
         """
 
