@@ -85,8 +85,9 @@ rule download_fastq:
         # Read the input file and process it
         while IFS=$'\\t' read -r species sra_ids; do
             species_fixed=$(echo "$species" | sed 's/ /_/g')  # Replace space with underscore
-            mkdir -p data/$species_fixed/fastq  # Create a directory for the species
-
+            cd data/$species_fixed
+            mkdir fastq  # Create a directory for the species
+            cd ../../
             # Convert comma-separated string to array
             IFS=',' read -ra ids <<< "$sra_ids"
 
