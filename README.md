@@ -67,6 +67,9 @@ Beware: currently, specifying a taxon that includes another taxon in the input i
 Call with (currently only dry runs, but I tested that the singularity container is pulled)
 
 ```
+# only on BRAIN cluster:
+module load singularity
+# generally if singularity is available:
 cd braker-snake
 snakemake --cores 1 --use-singularity
 ```
