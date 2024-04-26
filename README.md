@@ -15,6 +15,16 @@ Simple snakemake workflows for handling BRAKER on large data sets. Ultimately it
 
 (For Clara's project, we do not need other steps, but the pipeline could serve as template for further expansion in the future.)
 
+## Developing
+
+If you want to develop on this pipeline, please at the moment, communicate with Katharina, Stepan, Clara. Many rules are still completely blank, please let the others know what rule file you are working on to avoid git conflicts.
+
+If you want to fix a bug in an implemented set of rules, no need to communicate. Create a branch, fix the bug, make a pull request. If it has been tested properly, you can merge it yourself. Otherwise wait for Katharina to test the fix prior merging.
+
+Once we have a running end-to-end pipeline, you can create branch for your own development. Please communicate with others to avoid conflicts down the line.
+
+First rule of development: always commit and push your changes! Do not keep local unsynchronized changes for longer than 2 hours.
+
 ## Installation
 
 ```git clone https://github.com/KatharinaHoff/braker-snake.git```
