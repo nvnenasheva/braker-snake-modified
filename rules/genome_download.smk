@@ -1,6 +1,6 @@
 # Rule: download_assembly_info
 # Purpose:
-# This rule automates the process of downloading genome assembly data for a specified taxon
+# This rule automates the process of downloading genome assembly info/ for a specified taxon
 # from the NCBI database. It utilizes the NCBI datasets command-line tool within a Singularity
 # container to ensure environment consistency and reproducibility. The downloaded data is
 # initially compressed into a ZIP file, which is then extracted, and the relevant JSONL file
@@ -25,9 +25,6 @@
 # 3. Unzip the downloaded file to a specified sub-directory.
 # 4. Move the assembly data report (JSONL format) to the designated output location.
 # 5. Clean up all intermediate files and directories to maintain a clean working environment.
-#
-# This rule is critical for ensuring that up-to-date genomic data is available for analysis,
-# allowing researchers to base their studies on the most recent and comprehensive data available.
 rule download_assembly_info:
     output:
         raw_json = "data/{taxon}.json"
@@ -43,7 +40,8 @@ rule download_assembly_info:
         datasets download genome taxon "{params.taxon}" --assembly-source genbank --dehydrated --filename {params.taxon}_ncbi.zip; \
         unzip -o {params.taxon}_ncbi.zip -d {params.taxon}_ncbi_dataset; \
         mv {params.taxon}_ncbi_dataset/ncbi_dataset/data/assembly_data_report.jsonl {output.raw_json}; \
-        rm -rf {params.taxon}_ncbi_dataset {params.taxon}_ncbi.zip
+        rm -rf {params.taxon}_ncbi_dataset {params.taxon}_ncbi.zip; \
+        mkdir -p data/species
         """
 
 
@@ -154,6 +152,8 @@ rule classify_species:
         not_annotated_tbl = "data/{taxon}_blank.tbl"
     params:
         taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
     run:
         taxon = wildcards.taxon
         tbl_file_path = f"data/{taxon}.tbl"
@@ -181,3 +181,59 @@ rule classify_species:
             blank_data.to_csv(blank_tbl_path, sep="\t", index=False)
         except IOError:
             raise Exception(f"Error writing to file: {annotated_tbl_path} or {blank_tbl_path}")
+
+# This Snakemake rule 'prepare_download_assemblies_from_ncbi' is designed to automate the preparation of shell scripts
+# for downloading genomic assemblies from the NCBI database. The rule uses specific table files containing species and 
+# accession numbers to generate commands for downloading and organizing genomic data into structured directories. The
+# output is a shell script tailored for each taxon that handles directory creation, data retrieval, and data extraction.
+rule prepare_download_assemblies_from_ncbi:
+    input:
+        annotated_tbl_file = "data/{taxon}_annotated.tbl",
+        blank_tbl_file = "data/{taxon}_blank.tbl"
+    output:
+        download_script = "data/{taxon}_download.sh"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    run:
+        # Read the annotated table to get accessions and species names
+        print(input.blank_tbl_file)
+        df_blank = pd.read_csv(input.blank_tbl_file, sep="\t", usecols=['accession', 'species'])
+        df_anno = pd.read_csv(input.annotated_tbl_file, sep="\t", usecols=['accession', 'species'])
+        # Prepare a file to capture assembly information
+        try:
+            with open(output.download_script, 'w') as outfile:
+                command = ""
+                for index, row in df_blank.iterrows():
+                    # take the row["species"] field and replace all spaces by _, otherwise remove all special characters
+                    species = row["species"].replace(" ", "_")
+                    species = re.sub(r'[/?,.*&\\;]+', '', species)
+                    command += f"cd data/species; "
+                    command += f"mkdir {species}; cd {species};"
+                    command += f"datasets download genome accession {row['accession']} --filename {row['accession']}_assembly.zip; "
+                    command += f"unzip -o {row['accession']}_assembly.zip; "
+                    command += f"mkdir genome; "
+                    command += f"mv ncbi_dataset/data/{row['accession']}/*.fna genome/genome.fa; "
+                    command += f"rm -rf ncbiset_data {row['accession']}_assembly.zip; cd ../../..;\n"
+                for index, row in df_anno.iterrows():
+                    # take the row["species"] field and replace all spaces by _, otherwise remove all special characters
+                    species = row["species"].replace(" ", "_")
+                    species = re.sub(r'[/?,.*&\\;]+', '', species)
+                    command += f"cd data/species; "
+                    command += f"mkdir {species}; cd {species};"
+                    command += f"datasets download genome accession {row['accession']} --filename {row['accession']}_assembly.zip --include genome,gff3,protein,gtf; "
+                    command += f"unzip -o {row['accession']}_assembly.zip; "
+                    command += f"mkdir genome; "
+                    command += f"mv ncbi_dataset/data/{row['accession']}/*.fna genome/genome.fa; "
+                    command += f"mkdir annot;"
+                    command += f"mv ncbi_dataset/data/{row['accession']}/*.gff annot/annot.gff3;"
+                    command += f"mv ncbi_dataset/data/{row['accession']}/*.gtf annot/annot.gtf;"
+                    command += f"mkdir prot;"
+                    command += f"mv ncbi_dataset/data/{row['accession']}/*.faa prot/protein.faa;"
+                    command += f"rm -rf ncbi_dataset {row['accession']}_assembly.zip; cd ../../..;\n"
+                outfile.write(command)
+        except IOError:
+            raise Exception(f"Error writing to file: {output.download_script}")
+
+
+
+
