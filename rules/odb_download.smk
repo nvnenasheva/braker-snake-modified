@@ -12,7 +12,6 @@ rule download_orthodb_partitions:
     shell:
         """
         mkdir -p {params.orthodb_path}  # Ensure the directory exists &> log
-        cd {params.orthodb_path}
         # Download the main partition
         curl -o {params.orthodb_path}/{wildcards.odb_partition}.fa.gz {params.url} &> log
         

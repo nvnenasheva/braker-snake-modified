@@ -15,7 +15,7 @@ rule retrieve_rnaseq_info_from_sra:
         "docker://teambraker/braker3:latest"
     shell:
         """
-        export SINGULARITY_BIND="${{PWD}}:${{PWD}}"; \
-        bash {input.download_script} -e {params.email} -t {input.unannotated_species} -l {output.varus_list} -f {output.fastqdump_list}; \
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -l {output.varus_list} -f {output.fastqdump_lst}; \
         touch {output.done}
         """

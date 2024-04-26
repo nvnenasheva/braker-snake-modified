@@ -73,7 +73,6 @@ def main(args):
         nRecords, accessions_list = search_sra(species, args.email)
         all_data[species] = {'nRecords': nRecords, 'accessions': accessions_list}
 
-    print(all_data)
 
     # Print species with less than n_threshold records, if they have more than 0
     # including the accession numbers for direct fastq-dump processing
@@ -84,8 +83,6 @@ def main(args):
                 accessions_list = all_data[species]['accessions']
                 if int(nRecords) != 0:
                     if int(nRecords) < args.n_threshold:
-                        print('We think ' + species + ' has more than one library')
-                        print(accessions_list)
                         fastq_list.write(f"{species}\t")
                         for acc in accessions_list:
                             if acc != accessions_list[-1]:
