@@ -23,7 +23,7 @@ If you want to fix a bug in an implemented set of rules, no need to communicate.
 
 Once we have a running end-to-end pipeline, you can create branch for your own development. Please communicate with others to avoid conflicts down the line.
 
-First rule of development: always commit and push your changes! Do not keep local unsynchronized changes for longer than 2 hours.
+First rule of development: **always commit and push your changes! Do not keep local unsynchronized changes for longer than 2 hours.**
 
 ## Installation
 
