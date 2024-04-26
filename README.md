@@ -27,13 +27,14 @@ First rule of development: **always commit and push your changes! Do not keep lo
 
 ## Installation
 
+Go do a directory where you have space for many GBs of data. Clone the repository:
+
 ```git clone https://github.com/KatharinaHoff/braker-snake.git```
 
 Python dependencies:
 
 ```
 pip install pandas
-pip install snakemake
 ```
 
 Bash dependencies (are usually available on a cluster):
@@ -65,6 +66,7 @@ Beware: currently, specifying a taxon that includes another taxon in the input i
 ## Running
 
 Call with (currently only dry runs, but I tested that the singularity container is pulled)
+Execute this only in a place where you have space for many GBs of data!
 
 ```
 # only on BRAIN cluster:

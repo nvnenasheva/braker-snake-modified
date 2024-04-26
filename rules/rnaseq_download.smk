@@ -46,6 +46,8 @@ rule retrieve_rnaseq_info_from_sra:
 
 
 # Rule: download_fastq
+# Warning: 
+#   This rule takes extremely long! It is not run in parallel because i/o may be a bottleneck.
 # Purpose:
 #   This rule is designed to process a list of SRA accession numbers and use `fastq-dump` to download
 #   paired-end fastq files for each accession. It handles the preparation of directory structures
@@ -81,31 +83,37 @@ rule download_fastq:
         "docker://teambraker/braker3:latest"
     shell:
         """
+        echo "I am done with the SIF file, now starting, will take very long..."
         export APPTAINER_BIND="${{PWD}}:${{PWD}}";
-
+        logfile=$PWD/data/{wildcards.taxon}_fastqdump.log
         # Read the input file and process it
         while IFS=$'\\t' read -r species sra_ids; do
-            echo "$PWD" &>> data/{wildcards.taxon}_fastqdump.log
+            echo "$PWD" &>> $logfile
             species_fixed=$(echo "$species" | sed 's/ /_/g')  # Replace space with underscore
-            echo "cd data/species/$species_fixed" &>> data/{wildcards.taxon}_fastqdump.log
+            echo "cd data/species/$species_fixed" &>> $logfile
             cd data/species/$species_fixed
-            echo "mkdir fastq" &>> data/{wildcards.taxon}_fastqdump.log
-            mkdir fastq  # Create a directory for the species
-            echo "cd ../../../" &>> data/{wildcards.taxon}_fastqdump.log
+            # if the directory fastq does not exist, yet
+            if [ ! -d "fastq" ]; then
+                echo "mkdir fastq" &>> $logfile
+                mkdir fastq  # Create a directory for the species
+            echo "cd ../../../" &>> $logfile
             cd ../../../ 
-            echo "$PWD" &>> data/{wildcards.taxon}_fastqdump.log
+            echo "$PWD" &>> $logfile
             # Convert comma-separated string to array
             IFS=',' read -ra ids <<< "$sra_ids"
 
             # Process each SRA ID locally using the array
             for id in "${{ids[@]}}"; do
-                echo "fastq-dump --split-files --outdir data/$species_fixed/fastq $id" &>> data/{wildcards.taxon}_fastqdump.log
-                fastq-dump --split-files --outdir data/$species_fixed/fastq $id
-                echo "gzip data/species/$species_fixed/fastq/${{id}}_1.fastq" &>> data/{wildcards.taxon}_fastqdump.log
-                gzip data/species/$species_fixed/fastq/${{id}}_1.fastq
-                gzip data/species/$species_fixed/fastq/${{id}}_2.fastq
+                # this is such a long and expensive process that we do not want it to fail if fastq.gz files already exist
+                if [ ! -f "data/species/$species_fixed/fastq/${{id}}_1.fastq.gz" ] && [ ! -f "data/species/$species_fixed/fastq/${{id}}_2.fastq.gz" ]; then
+                    echo "fastq-dump --split-files --outdir data/species/$species_fixed/fastq $id" &>> $logfile
+                    fastq-dump --split-files --outdir data/species/$species_fixed/fastq $id &>> $logfile
+                    echo "gzip data/species/$species_fixed/fastq/${{id}}_1.fastq" &>> $logfile
+                    gzip data/species/$species_fixed/fastq/${{id}}_1.fastq &>> $logfile
+                    gzip data/species/$species_fixed/fastq/${{id}}_2.fastq
+                fi
             done
-        done < {input.fastqdump_lst} &>> data/{wildcards.taxon}_fastqdump.log
+        done < {input.fastqdump_lst} &>> $logfile
         
         touch {output.done}
         """
