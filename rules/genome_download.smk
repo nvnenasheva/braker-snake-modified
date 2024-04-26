@@ -40,7 +40,7 @@ rule download_assembly_info:
         datasets download genome taxon "{params.taxon}" --assembly-source genbank --dehydrated --filename {params.taxon}_ncbi.zip; \
         unzip -o {params.taxon}_ncbi.zip -d {params.taxon}_ncbi_dataset; \
         mv {params.taxon}_ncbi_dataset/ncbi_dataset/data/assembly_data_report.jsonl {output.raw_json}; \
-        rm -rf {params.taxon}_ncbi_dataset {params.taxon}_ncbi.zip README.md; \
+        rm -rf {params.taxon}_ncbi_dataset {params.taxon}_ncbi.zip; \
         mkdir -p data/species
         """
 
@@ -232,7 +232,8 @@ rule prepare_download_assemblies_from_ncbi:
                     command += f"mv ncbi_dataset/data/{row['accession']}/*.gtf annot/annot.gtf;"
                     command += f"mkdir prot;"
                     command += f"mv ncbi_dataset/data/{row['accession']}/*.faa prot/protein.faa;"
-                    command += f"rm -rf ncbi_dataset {row['accession']}_assembly.zip; cd ../../..;\n"
+                    command += f"rm -rf ncbi_dataset {row['accession']}_assembly.zip; cd ../../..;"
+                    command += f"rm README.md\n"
                 outfile.write(command)
         except IOError:
             raise Exception(f"Error writing to file: {output.download_script}")
