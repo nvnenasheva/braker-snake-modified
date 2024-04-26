@@ -50,6 +50,8 @@ The input data is expected to be in the following format:
 
 You find a small example in input.csv.  You may want to modify input.csv
 
+Beware: currently, specifying a taxon that includes another taxon in the input is dangerous! Don't do this!
+
 ## Running
 
 Call with (currently only dry runs, but I tested that the singularity container is pulled)
@@ -59,16 +61,4 @@ cd braker-snake
 snakemake --cores 1 --use-singularity
 ```
 
-Beware: currently, specifying a taxon that includes another taxon in the input is dangerous! Don't do this!
-
-
-Bash dependencies:
-
-   * Singuarlity
-
-   * curl
-
-   * zcat
-
-   * unzip
 
