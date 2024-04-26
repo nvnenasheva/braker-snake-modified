@@ -1,5 +1,19 @@
 # braker-snake
-Simple snakemake workflows for handling BRAKER on large data sets
+
+Simple snakemake workflows for handling BRAKER on large data sets. Ultimately it should do this:
+
+    1. Download the available assemblies for taxa from NCBI
+    2. Prioritize in case of species duplications (first choice: annotated refseq, second choice: max N50)
+    3. Separate into annotated and un-annotated genomes
+    4. Download the repspective data sets from NCBI datasets
+    5. Download OrthoDB partitions
+    6. Check availability of RNA-Seq data for all downloaded genomes
+    7. If less than 4 libraries, full download, otherwise run VARUS
+    8. Run BRAKER3 on the un-annotated genomes with RNA-Seq
+    9. Run BRAKER2 on the un-annotated genomes without RNA-Seq
+    10. Run BUSCO on all the protein data sets and compile a summary
+
+(For Clara's project, we do not need other steps, but the pipeline could serve as template for further expansion in the future.)
 
 ## Installation
 
