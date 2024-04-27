@@ -128,7 +128,92 @@ rule download_fastq:
         touch {output.done}
         """
 
-rule write_hisat2_commands:
+rule write_hisat_index_script:
+    input:
+        fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
+        download_done = "data/{taxon}_fastqdump.done",
+        genome_done = "data/{taxon}_download.done"
+    output:
+        done = "data/{taxon}_hisat2_index_scripts.done"
+    params:
+        taxon = lambda wildcards: wildcards.taxon,
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
+    run:
+        try:
+            with open(input.fastqdump_lst, "r") as f:
+                lines = f.readlines()
+        except IOError:
+            raise FileNotFoundError("Could not read the input file " + input.fastqdump_lst)
+        # construct commands, one index per species will be needed
+        cmds = []
+        for line in lines:
+            species, sra_ids = line.strip().split("\t")
+            species_fixed = species.replace(" ", "_")
+            # if species folder for scripts does not exist, create it
+            script_dir = f"data/species/{species_fixed}/scripts_hisat2"
+            if not os.path.exists(script_dir):
+                os.makedirs(script_dir, exist_ok=True)
+            # open script file, this does not need a random name since it is exactly one per species
+            script_file = f"{script_dir}/hisat2_index.sh"
+            try:
+                with open(script_file, "w") as f:
+                    # construct a genome index
+                    f.write(f"hisat2-build -p {params.threads} data/species/{species_fixed}/genome.fa data/species/{species_fixed}/genome/genome.fa.idx\n")
+            except IOError:
+                raise FileNotFoundError("Could not write the script file " + script_file)
+        # create the file that signals that the scripts are written
+        try:
+            with open(output.done, "w") as f:
+                f.write("done\n")
+        except IOError:
+            raise FileNotFoundError("Could not write the output file " + output.done)
+
+
+rule run_hisat2_index:
+    input:
+        fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
+        download_done = "data/{taxon}_hisat2_index_scripts.done",
+        genome_done = "data/{taxon}_download.done"
+    output:
+        done = "data/{taxon}_hisat2_index.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        singularity_image="docker://teambraker/braker3:latest",
+        partition = config['SLURM_ARGS']['partition'],
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
+    shell:
+        """
+        while IFS=$'\t' read -r species sra_ids; do
+            species_fixed=$(echo "$species" | sed 's/ /_/g')  # Replace space with underscore
+            echo $species_fixed
+            slurm_script="data/species/$species_fixed/scripts_hisat2/run_hisat2_index.sh"
+            # Create the SLURM script with proper quoting
+            echo '#!/bin/bash' > "$slurm_script"                             # Use single quotes here
+            echo 'module load singularity' >> "$slurm_script"
+            # load singularity bindings
+            echo "export APPTAINER_BIND=\"${{PWD}}:${{PWD}}\"" >> "$slurm_script" # Properly quote variables
+            # execute the actual index script
+            echo "singularity exec docker://teambraker/braker3:latest bash data/species/$species_fixed/scripts_hisat2/hisat2_index.sh" >> "$slurm_script"
+            # submit this job with sbatch
+            sbatch --partition=snowball \
+                --cpus-per-task=72 \
+                --job-name="${species_fixed}_hisat2_index" \
+                --output="data/species/$species_fixed/hisat2_index.out" \
+                "$slurm_script"
+        done < data/Mediophyceae_rnaseq_for_fastqdump.lst
+        
+        # Create an output file to signal that the job is done
+        touch {output.done}
+        """
+
+
+
+'''
+rule write_hisat2_scripts:
     input:
         fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
         download_done = "data/{taxon}_fastqdump.done",
@@ -136,7 +221,7 @@ rule write_hisat2_commands:
     output:
         done = "data/{taxon}_hisat2_commands.lst"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
     wildcard_constraints:
         taxon="[^_]+"
@@ -157,7 +242,7 @@ rule write_hisat2_commands:
             cmd += f"mkdir -p data/species/{species_fixed}/hisat2; "
             for sra_id in sra_ids.split(","):
                 # perform hisat2 alignment
-                cmd += f"hisat2 -x data/species/{species_fixed}/genome -1 data/species/{species_fixed}/fastq/{sra_id}_1.fastq.gz -2 data/species/{species_fixed}/fastq/{sra_id}_2.fastq.gz -S data/species/{species_fixed}/hisat2/{sra_id}.sam")
+                cmd += f"hisat2 -x data/species/{species_fixed}/genome -1 data/species/{species_fixed}/fastq/{sra_id}_1.fastq.gz -2 data/species/{species_fixed}/fastq/{sra_id}_2.fastq.gz -S data/species/{species_fixed}/hisat2/{sra_id}.sam"
                 # convert sam 2 bam:
                 cmd += f"samtools view --threads {params.threads} -bS data/species/{species_fixed}/hisat2/{sra_id}.sam > data/species/{species_fixed}/hisat2/{sra_id}.bam; "
                 # sort bam file:
@@ -167,13 +252,56 @@ rule write_hisat2_commands:
                 # remove the sam file
                 cmd += f"rm data/species/{species_fixed}/hisat2/{sra_id}.sam; "
                 # remove the unsorted bam file
-                cmd += f"rm data/speices/{species_fixed}/hisat2/{sra_id}.bam; "
+                cmd += f"rm data/species/{species_fixed}/hisat2/{sra_id}.bam; "
             cmd += "\n"
             cmds.append(cmd)
-        # print the to the output file (one line per species)
-        try:
-            with open(output.done, "w") as f:
-                for cmd in cmds:
-                    f.write(cmd)
-        except IOError:
-            raise FileNotFoundError("Could not write to the output file " + output.done)
+        # create a folder for the scripts in data/species/{species_fixed}/hisat2_scripts
+        script_dir = f"data/scripts_{params.taxon}"
+        os.makedirs(script_dir, exist_ok=True)
+        # write the commands script files
+        for i, cmd in enumerate(cmds):
+            # 
+
+
+rule run_hisat2:
+    input:
+        cmds= "data/{taxon}_hisat2_commands.lst"
+    output:
+        done= "data/{taxon}_hisat2.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        singularity_image="docker://teambraker/braker3:latest",
+        partition = config['SLURM_ARGS']['partition'],
+        threads = config['SLURM_ARGS']['cpus_per_task'],
+        script_dir="data/scripts_{taxon}"  # Directory for scripts
+    shell:
+        """
+        mkdir -p {params.script_dir}
+        # Split commands into separate scripts based on library ID
+        awk '/^hisat2/{{printf "\\n"}} /SRR/{{print > "{params.script_dir}/job_"substr($1, match($1, /SRR[0-9]+/), 10)".sh"}}' {input.cmds}
+
+        # Add headers to each script and prepare for execution
+        for script in {params.script_dir}/*.sh; do
+            mv $script {script}.tmp  # Temporarily rename for safe appending
+            echo '#!/bin/bash' > $script
+            echo 'module load singularity' >> $script
+            echo 'export APPTAINER_BIND="${{PWD}}:${{PWD}}"' >> $script
+            cat {script}.tmp >> $script
+            rm {script}.tmp  # Remove temporary file
+            chmod +x $script
+        done
+
+        # Submit the array job
+        sbatch --partition={params.partition} \
+               --cpus-per-task={params.threads} \
+               --job-name={params.taxon}_hisat2 \
+               --array=1-$(ls {params.script_dir}/*.sh | wc -l) \
+               --output={params.taxon}_hisat2_%A_%a.out \
+               --wrap="singularity exec {params.singularity_image} bash {params.script_dir}/job_%a.sh"
+
+        # Mark as done
+        touch {output.done}
+        """
+
+'''
+
