@@ -181,15 +181,13 @@ rule run_hisat2_index:
     params:
         taxon=lambda wildcards: wildcards.taxon,
         singularity_image="docker://teambraker/braker3:latest",
-        partition = config['SLURM_ARGS']['partition'],
         threads = config['SLURM_ARGS']['cpus_per_task']
-    threads: 72
+    threads: int(config['SLURM_ARGS']['cpus_per_task'])
     resources:
         mem_mb=4000,
         runtime=120
     shell:
         """
-        echo "Running on partition: {params.partition}"
         echo "Using singularity image: {params.singularity_image}"
         echo "Allocated threads: {threads}"
         echo "Memory (MB): {resources.mem_mb}"

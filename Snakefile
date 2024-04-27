@@ -16,9 +16,6 @@ from pathlib import Path
 import json
 import re
 
-# configfile for SLURM
-configfile: "config.yaml"
-
 # Load and parse the config file
 config = configparser.ConfigParser()
 config.read('config.ini')
