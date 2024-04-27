@@ -128,3 +128,52 @@ rule download_fastq:
         touch {output.done}
         """
 
+rule write_hisat2_commands:
+    input:
+        fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
+        download_done = "data/{taxon}_fastqdump.done",
+        genome_done = "data/{taxon}_download.done"
+    output:
+        done = "data/{taxon}_hisat2_commands.lst"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
+    run:
+        try:
+            with open(input.fastqdump_lst, "r") as f:
+                lines = f.readlines()
+        except IOError:
+            raise FileNotFoundError("Could not read the input file " + input.fastqdump_lst)
+        # construct commands
+        cmds = []
+        for line in lines:
+            species, sra_ids = line.strip().split("\t")
+            species_fixed = species.replace(" ", "_")
+            # construct a genome index
+            cmd = f"hisat2-build -p {params.threads} data/species/{species_fixed}/genome.fa data/species/{species_fixed}/genome; "
+            # make hisat2 folder
+            cmd += f"mkdir -p data/species/{species_fixed}/hisat2; "
+            for sra_id in sra_ids.split(","):
+                # perform hisat2 alignment
+                cmd += f"hisat2 -x data/species/{species_fixed}/genome -1 data/species/{species_fixed}/fastq/{sra_id}_1.fastq.gz -2 data/species/{species_fixed}/fastq/{sra_id}_2.fastq.gz -S data/species/{species_fixed}/hisat2/{sra_id}.sam")
+                # convert sam 2 bam:
+                cmd += f"samtools view --threads {params.threads} -bS data/species/{species_fixed}/hisat2/{sra_id}.sam > data/species/{species_fixed}/hisat2/{sra_id}.bam; "
+                # sort bam file:
+                cmd += f"samtools sort --threads {params.threads} data/species/{species_fixed}/hisat2/{sra_id}.bam -o data/species/{species_fixed}/hisat2/{sra_id}.sorted.bam; "
+                # index the sorted bam file
+                cmd += f"samtools index data/species/{species_fixed}/hisat2/{sra_id}.sorted.bam; "
+                # remove the sam file
+                cmd += f"rm data/species/{species_fixed}/hisat2/{sra_id}.sam; "
+                # remove the unsorted bam file
+                cmd += f"rm data/speices/{species_fixed}/hisat2/{sra_id}.bam; "
+            cmd += "\n"
+            cmds.append(cmd)
+        # print the to the output file (one line per species)
+        try:
+            with open(output.done, "w") as f:
+                for cmd in cmds:
+                    f.write(cmd)
+        except IOError:
+            raise FileNotFoundError("Could not write to the output file " + output.done)
