@@ -47,7 +47,15 @@ rule retrieve_rnaseq_info_from_sra:
 
 # Rule: download_fastq
 # Warning: 
-#   This rule takes extremely long! It is not run in parallel because i/o may be a bottleneck.
+#   This rule takes extremely long! It is not run in SLURM parallel because i/o may be a bottleneck.
+#   It must regrettably expected that this rule fails, repeatedly. Do not worry, just restart the
+#   workflow. The rule is implemented in a way that it will pick up where it left off. 
+# To Do:
+#   The failures are due to the fact that the NCBI servers are not always available.
+#   There's a tweet by Heng Li that may help to eventually debug this:
+#   https://twitter.com/lh3lh3/status/1779876367200387172
+#   This suggests to replace fastq-dump by fasterq-dump. This is not yet implemented in the rule.
+#   It suggest to first download a prefetch file, and then execute the dump.
 # Purpose:
 #   This rule is designed to process a list of SRA accession numbers and use `fastq-dump` to download
 #   paired-end fastq files for each accession. It handles the preparation of directory structures
@@ -105,7 +113,7 @@ rule download_fastq:
 
             # Process each SRA ID locally using the array
             for id in "${{ids[@]}}"; do
-                # this is such a long and expensive process that we do not want it to fail if fastq.gz files already exist
+                # this is such a long and expensive process that we do not want it to execute if fastq.gz files already exist
                 if [ ! -f "data/species/$species_fixed/fastq/${{id}}_1.fastq.gz" ] && [ ! -f "data/species/$species_fixed/fastq/${{id}}_2.fastq.gz" ]; then
                     echo "fastq-dump --split-files --outdir data/species/$species_fixed/fastq $id" &>> $logfile
                     fastq-dump --split-files --outdir data/species/$species_fixed/fastq $id &>> $logfile
@@ -116,6 +124,7 @@ rule download_fastq:
             done
         done < {input.fastqdump_lst} &>> $logfile
         
+        echo "touch {output.done}" &>> $logfile
         touch {output.done}
         """
 
