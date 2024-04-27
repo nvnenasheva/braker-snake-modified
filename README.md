@@ -34,10 +34,16 @@ Go do a directory where you have space for many GBs of data. Clone the repositor
 
 ```git clone https://github.com/KatharinaHoff/braker-snake.git```
 
-Python dependencies (on BRAIN, you may first have to install conda, then install pip with conda, then install pandas with pip):
+Python dependencies (this workflow cannot execute with a singularity container of snakemake due to problems with SLURM communication):
 
 ```
-pip install pandas
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+source ~/.bashrc # to activate miniconda
+conda install -n base -c conda-forge mamba
+mamba create -c conda-forge -c bioconda -n snakemake snakemake
+mamba activate snakemake
+pip install snakemake-executor-plugin-slurms
 ```
 
 Bash dependencies (are usually available on a cluster): singularity, curl, zcat, unzip, rm, echo, mkdir, ...
@@ -64,10 +70,8 @@ Execute this only in a place where you have space for many GBs of data, output i
 
 ```
 # only on BRAIN cluster:
+mamba activate snakemake
 module load singularity
 cd braker-snake
-singularity build snakemake.sif docker://snakemake/snakemake:latest
-# once the image was built, only execute the following line:
-singularity exec -B $PWD:$PWD snakemake.sif snakemake --cores 2 --use-singularity
+snakemake --use-singularity --executor slurm --default-resources slurm_account=none slurm_partition=snowball --jobs=100
 ```
-

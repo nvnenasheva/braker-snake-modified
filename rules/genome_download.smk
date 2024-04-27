@@ -22,7 +22,7 @@
 # Steps Executed:
 # 1. Set up a bind mount to ensure current working directory ('${PWD}') is accessible inside the Singularity container.
 # 2. Execute the 'datasets download genome' command specifying the taxon, source database (GenBank), and download format (dehydrated).
-# 3. Unzip the downloaded file to a specified sub-directory.
+# 3. Unzip the downloaded file to a specified sub-dirlocalrules: all, another_local_ruleectory.
 # 4. Move the assembly data report (JSONL format) to the designated output location.
 # 5. Clean up all intermediate files and directories to maintain a clean working environment.
 rule download_assembly_info:

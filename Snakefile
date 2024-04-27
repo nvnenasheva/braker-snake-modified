@@ -16,10 +16,20 @@ from pathlib import Path
 import json
 import re
 
+# configfile for SLURM
+configfile: "config.yaml"
+
 # Load and parse the config file
 config = configparser.ConfigParser()
 config.read('config.ini')
 input_csv = config['INPUT']['input_csv']
+
+# define local rules that are not submitted via SLURM
+# some of them are local because they are fast, others because there bottleneck is i/o, not CPU
+localrules: all, \
+            download_assembly_info, assembly_json_to_tbl, classify_species, prepare_download_assemblies_from_ncbi, run_download_commands, \
+            download_orthodb_partitions, \
+            retrieve_rnaseq_info_from_sra, download_fastq, write_hisat_index_script
 
 # Read the input CSV file to get taxon and odb partition names
 # Assuming the CSV file is tab-separated

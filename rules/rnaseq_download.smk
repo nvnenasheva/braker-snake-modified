@@ -183,6 +183,36 @@ rule run_hisat2_index:
         singularity_image="docker://teambraker/braker3:latest",
         partition = config['SLURM_ARGS']['partition'],
         threads = config['SLURM_ARGS']['cpus_per_task']
+    threads: 72
+    resources:
+        mem_mb=4000,
+        runtime=120
+    shell:
+        """
+        echo "Running on partition: {params.partition}"
+        echo "Using singularity image: {params.singularity_image}"
+        echo "Allocated threads: {threads}"
+        echo "Memory (MB): {resources.mem_mb}"
+        echo "Runtime (minutes): {resources.runtime}"
+        hostname > {output.done}
+        echo "SLURM_JOB_ID: $SLURM_JOB_ID" >> {output.done}
+        echo "Testing whether I can do anything at all" >> {output.done}
+        """
+
+
+'''
+rule run_hisat2_index:
+    input:
+        fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
+        download_done = "data/{taxon}_hisat2_index_scripts.done",
+        genome_done = "data/{taxon}_download.done"
+    output:
+        done = "data/{taxon}_hisat2_index.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        singularity_image="docker://teambraker/braker3:latest",
+        partition = config['SLURM_ARGS']['partition'],
+        threads = config['SLURM_ARGS']['cpus_per_task']
     wildcard_constraints:
         taxon="[^_]+"
     shell:
@@ -212,7 +242,6 @@ rule run_hisat2_index:
 
 
 
-'''
 rule write_hisat2_scripts:
     input:
         fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
