@@ -89,5 +89,5 @@ Run the pipeline:
 mamba activate snakemake
 module load singularity
 cd braker-snake
-snakemake --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=100 --use-apptainer --apptainer-args='\-\-cleanenv \-B /home/hoffk83/git/braker-snake:/home/hoffk83/git/braker-snake'
+snakemake --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=100 --use-apptainer
 ```

@@ -15,6 +15,8 @@ import pandas as pd
 from pathlib import Path
 import json
 import re
+import glob
+from snakemake.io import expand
 
 # Load and parse the config file
 config = configparser.ConfigParser()
@@ -26,7 +28,7 @@ input_csv = config['INPUT']['input_csv']
 localrules: all, \
             download_assembly_info, assembly_json_to_tbl, classify_species, prepare_download_assemblies_from_ncbi, run_download_commands, \
             download_orthodb_partitions, \
-            retrieve_rnaseq_info_from_sra, download_fastq, write_hisat_index_script
+            retrieve_rnaseq_info_from_sra, download_fastq, write_hisat2_align_cmds, finalize_hisat_alignment
 
 # Read the input CSV file to get taxon and odb partition names
 # Assuming the CSV file is tab-separated
@@ -47,8 +49,7 @@ rule all:
         expand("data/{taxon}_download.done", taxon=taxa_list),
         expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions),
         expand("data/{taxon}_rnaseq_info.done", taxon=taxa_list),
-        #expand("data/mounts_{taxon}.txt", taxon=taxa_list)
-        expand("data/{taxon}_hisat2_index.done", taxon=taxa_list)
+        expand("data/{taxon}_alignment_analysis_results.txt", taxon=taxa_list)
         # This is the place where you have to expand when you are waiting for more targets! For example,
         # we will implement RNA-Seq download, and this is where you have to add the RNA-Seq targets.
 
