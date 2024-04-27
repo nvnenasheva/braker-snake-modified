@@ -11,24 +11,24 @@ rule download_orthodb_partitions:
         special_url="https://bioinf.uni-greifswald.de/bioinf/partitioned_odb11/Viridiplantae.fa.gz"
     shell:
         """
-        mkdir -p {params.orthodb_path}  # Ensure the directory exists &> log
+        mkdir -p {params.orthodb_path}  # Ensure the directory exists
         # Download the main partition
-        curl -o {params.orthodb_path}/{wildcards.odb_partition}.fa.gz {params.url} &> log
+        curl -o {params.orthodb_path}/{wildcards.odb_partition}.fa.gz {params.url}
         
         # Check if the partition is stramenopiles and handle accordingly
         if [ "{wildcards.odb_partition}" = "Stramenopiles" ]; then
             # Download the Viridiplantae partition
-            curl -o {params.orthodb_path}/Viridiplantae.fa.gz {params.special_url} &> log
+            curl -o {params.orthodb_path}/Viridiplantae.fa.gz {params.special_url}
             # Concatenate Stramenopiles and Viridiplantae
             zcat {params.orthodb_path}/Stramenopiles.fa.gz {params.orthodb_path}/Viridiplantae.fa.gz > {params.orthodb_path}/Stramenopiles_combined.fa 2> log
             # Move the combined file to the original Stramenopiles output, replacing it
-            mv {params.orthodb_path}/Stramenopiles_combined.fa {output.fasta} &> log
+            mv {params.orthodb_path}/Stramenopiles_combined.fa {output.fasta}
             # Clean up the Viridiplantae file
-            rm {params.orthodb_path}/Viridiplantae.fa.gz {params.orthodb_path}/Stramenopiles.fa.gz &> log
+            rm {params.orthodb_path}/Viridiplantae.fa.gz {params.orthodb_path}/Stramenopiles.fa.gz
         else
             # Move the single partition to the final output
-            gunzip {params.orthodb_path}/{wildcards.odb_partition}.fa.gz &> log
-            mv {params.orthodb_path}/{wildcards.odb_partition}.fa {output.fasta} &> log
+            gunzip {params.orthodb_path}/{wildcards.odb_partition}.fa.gz
+            mv {params.orthodb_path}/{wildcards.odb_partition}.fa {output.fasta}
         fi
         """
 

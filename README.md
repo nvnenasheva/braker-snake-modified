@@ -46,7 +46,7 @@ mamba activate snakemake
 pip install snakemake-executor-plugin-slurms
 ```
 
-Bash dependencies (are usually available on a cluster): singularity, curl, zcat, unzip, rm, echo, mkdir, ...
+Bash dependencies (are usually available on a cluster): singularity, curl, zcat, unzip, rm, echo, mkdir, cat, sed, ...
 
 ## Configuration
 
@@ -68,10 +68,26 @@ Beware: currently, specifying a taxon that includes another taxon in the input i
 
 Execute this only in a place where you have space for many GBs of data, output is written to a subdirectory data and will be very, very big!
 
+Due to a weird binding issue with current snakemake/SLURM (see Issues), you have to create a config file and fill it with the bindings directory for your singularity job. I hope this will be fixed, eventually.
+
+```
+mkdir -p ./profile/apptainer/
+touch ./profile/apptainer/config.v8+.yaml
+```
+
+Add the following content to the file (adapt to your own working directory):
+
+```
+use-singularity: True
+singularity-args: "\"--bind /home/hoffk83/git/braker-snake\""
+```
+
+Run the pipeline:
+
 ```
 # only on BRAIN cluster:
 mamba activate snakemake
 module load singularity
 cd braker-snake
-snakemake --use-singularity --executor slurm --default-resources slurm_account=none slurm_partition=snowball --jobs=100
+snakemake --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=100 --use-apptainer --apptainer-args='\-\-cleanenv \-B /home/hoffk83/git/braker-snake:/home/hoffk83/git/braker-snake'
 ```

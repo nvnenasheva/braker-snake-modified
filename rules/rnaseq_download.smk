@@ -182,21 +182,25 @@ rule run_hisat2_index:
         taxon=lambda wildcards: wildcards.taxon,
         singularity_image="docker://teambraker/braker3:latest",
         threads = config['SLURM_ARGS']['cpus_per_task']
-    threads: int(config['SLURM_ARGS']['cpus_per_task'])
+    threads: 48
     resources:
-        mem_mb=4000,
-        runtime=120
+        mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
+        runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
-        echo "Using singularity image: {params.singularity_image}"
-        echo "Allocated threads: {threads}"
-        echo "Memory (MB): {resources.mem_mb}"
-        echo "Runtime (minutes): {resources.runtime}"
-        hostname > {output.done}
-        echo "SLURM_JOB_ID: $SLURM_JOB_ID" >> {output.done}
-        echo "Testing whether I can do anything at all" >> {output.done}
+        log="data/{wildcards.taxon}_hisat2_index.log"
+        echo "" > $log
+        readarray -t species_list < <(cat {input.fastqdump_lst} | sed 's/ /_/' | cut -d$'\t' -f1)
+        for species in "${{species_list[@]}}"; do
+            if [ ! -d "data/species/$species/hisat2" ]; then
+                mkdir -p "data/species/$species/hisat2"
+            fi
+            echo "hisat2-build -p {params.threads} data/species/$species/genome/genome.fa data/species/$species/genome/genome.fa.idx" >> $log
+            which hisat2-build &>> $log
+            hisat2-build -p {params.threads} data/species/$species/genome/genome.fa data/species/$species/genome/genome.fa.idx &>> $log
+        done
+        touch {output.done}
         """
-
 
 '''
 rule run_hisat2_index:
