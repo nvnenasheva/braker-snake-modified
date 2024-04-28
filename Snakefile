@@ -28,7 +28,7 @@ input_csv = config['INPUT']['input_csv']
 localrules: all, \
             download_assembly_info, assembly_json_to_tbl, classify_species, prepare_download_assemblies_from_ncbi, run_download_commands, \
             download_orthodb_partitions, \
-            retrieve_rnaseq_info_from_sra, download_fastq, write_hisat2_align_cmds, finalize_hisat_alignment
+            retrieve_rnaseq_info_from_sra, download_fastq
 
 # Read the input CSV file to get taxon and odb partition names
 # Assuming the CSV file is tab-separated

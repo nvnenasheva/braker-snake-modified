@@ -128,6 +128,20 @@ rule download_fastq:
         touch {output.done}
         """
 
+# Rule: run_hisat2
+# Description: This rule is responsible for building a HISAT2 index for RNA-seq data analysis, aligning RNA-seq reads to the genome, and processing the alignment outputs.
+# It performs several operations:
+# 1. Reads a list of species and their corresponding SRA IDs from a specified file.
+# 2. For each species, it checks if the necessary directories exist, and if not, it creates them.
+# 3. It then proceeds to build the HISAT2 index for the genome of each species.
+# 4. For each SRA ID associated with a species, the rule runs HISAT2 to align the RNA-seq reads to the genome, converts the output SAM to BAM format, sorts and indexes the BAM files.
+# 5. It merges all BAM files for a given species into a single sorted BAM file, indexes it, and cleans up individual BAM files to save space.
+# 6. Finally, it touches a file to indicate completion of the process.
+# This rule utilizes significant computational resources (as specified in SLURM_ARGS and passed to the rule) and runs in a Singularity container to ensure environment consistency.
+# WARNING: this rule executes once for each taxon. Depending on genome size and the number of SRA IDs, this rule may take a long time to complete.
+#          this may exceed the runtime limit on our cluster!
+#          If we figure out that it exceeds indeed the runtime limit, we may have to further take this apart (e.g. one rule building the index,
+#          one executing hisat, one converting to bam, one sorting, one merging).
 rule run_hisat2_index:
     input:
         fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
