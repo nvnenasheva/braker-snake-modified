@@ -9,10 +9,10 @@ Ultimately it should do this:
     3. Separate into annotated and un-annotated genomes
     4. Download the respective data sets from NCBI datasets (either genome only, or genome, annotation, proteins)
     5. Download OrthoDB partitions
-    6. Check availability of RNA-Seq data for all downloaded genomes <- currently implemented up to here
-    7. If less than N libraries, full download, alignment, sorting (N to be determined later)
-    8. otherwise run VARUS
-    9. Run BRAKER3 on the un-annotated genomes with RNA-Seq
+    6. Check availability of RNA-Seq data for all downloaded genomes
+    7. If less than N libraries, full download, alignment, sorting (N to be determined later) <- currently implemented up to here
+    8. otherwise run VARUS <- this is a problem because of the environment modification that we need to perform for VARUS, not sure how to do this in a container, yet
+    9. Run BRAKER3 on the un-annotated genomes with RNA-Seq <- this will go into a separate Snakefile because it should launch one job per species, not per taxon, runtime issue otherwise
     10. Run BRAKER2 on the un-annotated genomes without RNA-Seq
     11. Run BUSCO on all the protein data sets and compile a summary
 
