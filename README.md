@@ -96,4 +96,4 @@ snakemake --executor slurm --default-resources slurm_account=none slurm_partitio
 
 (can always be generated with `snakemake --dag | dot -Tpng > dag.png`, potentially not on BRAIN because dot may not be installed)
 
-![DAG](dag.svg)
+![DAG](dag.png)
