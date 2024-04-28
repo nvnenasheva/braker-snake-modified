@@ -92,7 +92,7 @@ cd braker-snake
 snakemake --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=100 --use-apptainer
 ```
 
-# Current DAG with example data
+## Current DAG with example data
 
 (can always be generated with `snakemake --dag | dot -Tpng > dag.png`, potentially not on BRAIN because dot may not be installed)
 
