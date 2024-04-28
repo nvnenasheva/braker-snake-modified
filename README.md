@@ -71,8 +71,8 @@ Execute this only in a place where you have space for many GBs of data, output i
 Due to a weird binding issue with current snakemake/SLURM (see Issues), you have to create a config file and fill it with the bindings directory for your singularity job. I hope this will be fixed, eventually.
 
 ```
-mkdir -p ./profile/apptainer/
-touch ./profile/apptainer/config.v8+.yaml
+mkdir -p ~/profile/apptainer/
+touch ~/profile/apptainer/config.v8+.yaml
 ```
 
 Add the following content to the file (adapt to your own working directory):
