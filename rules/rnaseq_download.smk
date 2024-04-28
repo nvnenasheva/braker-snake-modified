@@ -142,7 +142,7 @@ rule download_fastq:
 #          this may exceed the runtime limit on our cluster!
 #          If we figure out that it exceeds indeed the runtime limit, we may have to further take this apart (e.g. one rule building the index,
 #          one executing hisat, one converting to bam, one sorting, one merging).
-rule run_hisat2_index:
+rule run_hisat2:
     input:
         fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
         download_done = "data/{taxon}_fastqdump.done",
