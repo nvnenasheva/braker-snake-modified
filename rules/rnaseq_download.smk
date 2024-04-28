@@ -128,17 +128,6 @@ rule download_fastq:
         touch {output.done}
         """
 
-# Rule: run_hisat2_index
-# Purpose:
-#   This rule processes RNA sequencing data by building HISAT2 genome indexes for specified taxa.
-#   It reads a list of taxa from a designated FASTQ dump list, creates necessary directories for output,
-#   and performs the HISAT2 genome indexing operation for each taxon found in the input list.
-# Operational Details:
-#   - The script logs all operations to a taxon-specific log file, ensuring traceability of the process.
-#   - It checks for the existence of directories and creates them if they do not exist, preventing errors in file handling.
-#   - Uses `hisat2-build` to generate genome indexes, essential for subsequent RNA-seq analysis pipelines.
-#   - The rule uses a Singularity container to ensure a consistent execution environment, avoiding software version issues.
-# This rule is launched to SLURM, we assume that all genome indices per taxon group can be built within the time limit.
 rule run_hisat2_index:
     input:
         fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
@@ -159,118 +148,39 @@ rule run_hisat2_index:
         """
         log="data/{wildcards.taxon}_hisat2_index.log"
         echo "" > $log
-        readarray -t species_list < <(cat {input.fastqdump_lst} | sed 's/ /_/' | cut -d$'\t' -f1)
-        for species in "${{species_list[@]}}"; do
+        readarray -t lines < <(cat {input.fastqdump_lst})
+        for line in "${{lines[@]}}"; do
+            # Replace the first space with an underscore in the species name part of the line
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
             if [ ! -d "data/species/$species/hisat2" ]; then
                 mkdir -p "data/species/$species/hisat2"
             fi
             echo "hisat2-build -p {params.threads} data/species/$species/genome/genome.fa data/species/$species/genome/genome" >> $log
             which hisat2-build &>> $log
             hisat2-build -p {params.threads} data/species/$species/genome/genome.fa data/species/$species/genome/genome &>> $log
+            sra_ids=$(echo "$modified_line" | cut -f2)
+            IFS=',' read -r -a sra_array <<< "$sra_ids"
+            for sra_id in "${{sra_array[@]}}"; do
+                if [ ! -f "data/species/$species/hisat2/${{sra_id}}.sorted.bam" ]; then
+                    echo "hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam" >> $log
+                    hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam &>> $log
+                    samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam
+                    samtools sort --threads {params.threads} data/species/$species/hisat2/${{sra_id}}.bam -o data/species/$species/hisat2/${{sra_id}}.sorted.bam
+                    samtools index data/species/$species/hisat2/${{sra_id}}.sorted.bam
+                    rm data/species/$species/hisat2/${{sra_id}}.sam
+                    rm data/species/$species/hisat2/${{sra_id}}.bam
+                fi
+            done
+            # merge all bam files of the same species with samtools merge 
+            if [ ! -f "data/species/$species/hisat2/${{species}}.sorted.bam" ]; then
+                samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam
+                samtools index data/species/$species/hisat2/${{species}}.sorted.bam
+            fi
+            # delete the individual bam files
+            for sra_id in "${{sra_array[@]}}"; do
+                rm data/species/$species/hisat2/${{sra_id}}.sorted.bam
+            done
         done
         touch {output.done}
-        """
-
-
-rule write_hisat2_align_cmds:
-    input: 
-        fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
-        download_done = "data/{taxon}_fastqdump.done",
-        genome_done = "data/{taxon}_download.done",
-        index_done = "data/{taxon}_hisat2_index.done"
-    output:
-        done = "data/{taxon}_write_hisat2_align_cmds.done"
-    params:
-        taxon = lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
-    wildcard_constraints:
-        taxon="[^_]+"
-    run:
-        try:
-            with open(input.fastqdump_lst, "r") as f:
-                lines = f.readlines()
-        except IOError:
-            raise FileNotFoundError("Could not read the input file " + input.fastqdump_lst)
-        # construct commands
-        for line in lines:
-            species, sra_ids = line.strip().split("\t")
-            species_fixed = species.replace(" ", "_")
-            # check if directory for scripts already exists
-            if not os.path.exists(f"data/{params.taxon}_hisat_scripts"):
-                os.makedirs(f"data/{params.taxon}_hisat_scripts")
-            for sra_id in sra_ids.split(","):
-                cmd = ""
-                # perform hisat2 alignment
-                cmd += f"hisat2 -p {params.threads} -x data/species/{species_fixed}/genome/genome -1 data/species/{species_fixed}/fastq/{sra_id}_1.fastq.gz -2 data/species/{species_fixed}/fastq/{sra_id}_2.fastq.gz -S data/species/{species_fixed}/hisat2/{sra_id}.sam; "
-                # convert sam 2 bam:
-                cmd += f"samtools view --threads {params.threads} -bS data/species/{species_fixed}/hisat2/{sra_id}.sam > data/species/{species_fixed}/hisat2/{sra_id}.bam; "
-                # sort bam file:
-                cmd += f"samtools sort --threads {params.threads} data/species/{species_fixed}/hisat2/{sra_id}.bam -o data/species/{species_fixed}/hisat2/{sra_id}.sorted.bam; "
-                # index the sorted bam file
-                cmd += f"samtools index data/species/{species_fixed}/hisat2/{sra_id}.sorted.bam; "
-                # remove the sam file
-                cmd += f"rm data/species/{species_fixed}/hisat2/{sra_id}.sam; "
-                # remove the unsorted bam file
-                cmd += f"rm data/species/{species_fixed}/hisat2/{sra_id}.bam; "
-                cmd += "\n"
-                script_name = f"data/{params.taxon}_hisat_scripts/{sra_id}_hisat2.sh"
-                try:
-                    with open(script_name, "w") as f:
-                        f.write(cmd)
-                except IOError:
-                    raise FileNotFoundError("Could not write to the output file " + script_name)
-        # write done file
-        with open(output.done, "w") as f:
-            f.write("done")
-
-
-checkpoint run_hisat2_align:
-    input:
-        script="data/{taxon}_hisat2_scripts/{script}.sh",
-        index_done="data/{taxon}_hisat2_index.done",
-        cmds_done="data/{taxon}_write_hisat2_align_cmds.done"
-    output:
-        done="data/{taxon}_hisat2_scripts/{script}.done",
-        all_done=touch("data/{taxon}_hisat2_scripts/all_done_{taxon}_{script}.flag")
-    params:
-        taxon=lambda wildcards: wildcards.taxon,
-        threads=config['SLURM_ARGS']['cpus_per_task']
-    wildcard_constraints:
-        taxon="[^_]+"
-    threads: lambda wildcards: int(config['SLURM_ARGS']['cpus_per_task'])
-    singularity:
-        "docker://teambraker/braker3:latest"
-    resources:
-        mem_mb=lambda wildcards: int(config['SLURM_ARGS']['mem_of_node']),
-        runtime=lambda wildcards: int(config['SLURM_ARGS']['max_runtime'])
-    shell:
-        """
-        bash {input.script}
-        echo {input.script} > {output.done}
-        touch data/{wildcards.taxon}_hisat2_scripts/all_done_{wildcards.taxon}_{wildcards.script}.flag
-        """
-
-
-def aggregate_hisat_outputs(taxon):
-    done_files = glob.glob(f"data/{taxon}_hisat2_scripts/*.done")
-    flags = glob.glob(f"data/{taxon}_hisat2_scripts/all_done_{taxon}_*.flag")
-    if len(done_files) == len(flags):
-        return done_files
-    else:
-        raise WorkflowError(f"Not all alignment scripts have completed flags for {taxon}.")
-
-
-
-rule finalize_hisat_alignment:
-    input:
-        aggregate_hisat_outputs
-    output:
-        "data/{taxon}_all_hisat_alignments_completed.txt"
-    params:
-        taxon=lambda wildcards: wildcards.taxon
-    wildcard_constraints:
-        taxon="[^_]+"
-    shell:
-        """
-        echo "All HISAT2 alignments have been completed for {wildcards.taxon}." > {output}
         """
