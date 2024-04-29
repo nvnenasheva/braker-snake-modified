@@ -1,4 +1,4 @@
---batchSize 50000
+--batchSize 100000
 --blockSize 5000
 --components 1
 --cost 0.001
@@ -11,7 +11,7 @@
 --lambda 10.0
 --lessInfo 1
 --loadAllOnce 0
---maxBatches 20
+--maxBatches 1000
 --mergeThreshold 10
 --outFileNamePrefix ./data/varus/
 --pathToParameters ./VARUSparameters.txt
