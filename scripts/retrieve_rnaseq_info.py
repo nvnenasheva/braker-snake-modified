@@ -91,35 +91,24 @@ def main(args):
                 nRecords = all_data[species]['nRecords']
                 accessions_list = all_data[species]['accessions']
                 if int(nRecords) != 0:
-                    if int(nRecords) < args.n_threshold:
-                        fastq_list.write(f"{species}\t")
-                        for acc in accessions_list:
-                            if acc != accessions_list[-1]:
-                                fastq_list.write(f"{acc},")
-                            else:
-                                fastq_list.write(f"{acc}\n")
+                    fastq_list.write(f"{species}\t")
+                    for acc in accessions_list:
+                        if acc != accessions_list[-1]:
+                            fastq_list.write(f"{acc},")
+                        else:
+                            fastq_list.write(f"{acc}\n")
                 else:
                     print("Info: There is no RNA-Seq data for species " + species + " in SRA")
 
     except IOError:
         print("Could not write to file " + args.fastqdump_out_list)
-    # Print species with more than n_threshold records for further processing with VARUS
-    try:
-        with open(args.varus_out_list, 'w') as varus_list:
-            for species in species_list:
-                nRecords, accessions_list = search_sra(species, args.email)
-                if int(nRecords) >= args.n_threshold:
-                    varus_list.write(f"{species}\n")
-    except IOError:
-        print("Could not write to file " + args.varus_out_list)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Search NCBI SRA for RNA libraries of specified species.')
     parser.add_argument('-e', '--email', required=True, help='Email address for NCBI access')
     parser.add_argument('-t', '--species_tables', required=True, help='File path to tab separated file that contains species information, format specific to braker-snake')
-    parser.add_argument('-l', '--varus_out_list', required=True, help='List of species that shall further be processed with VARUS')
     parser.add_argument('-f', '--fastqdump_out_list', required=True, help='List of species ')
-    parser.add_argument('-n', '--n_threshold', required=False, default=10, help='Threshold for number of records to be considered for further processing with VARUS (default: 10), those with fewer records will be output into a separate file for direct fastq-dump processing')
+    parser.add_argument('-n', '--n_threshold', required=False, default=6, help='Threshold for number of records to be considered for further processing with VARUS (default: 6), those with fewer records will be output into a separate file for direct fastq-dump processing')
 
     args = parser.parse_args()
     main(args)
