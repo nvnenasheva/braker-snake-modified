@@ -42,7 +42,6 @@ rule retrieve_rnaseq_info_from_sra:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
         python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -f {output.fastqdump_lst}; \
-        sleep(20)
         touch {output.done}
         """
 
@@ -88,7 +87,9 @@ rule download_fastq:
         done = "data/checkpoints_dataprep/{taxon}_fastqdump.done"
     params:
         threads = 10,
-        tmpdir = config['SLURM_ARGS']['tmp_dir']
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
     singularity:
         "docker://katharinahoff/varus-notebook:v0.0.5"
     threads: 12
@@ -97,9 +98,9 @@ rule download_fastq:
         runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
         echo "I am done with the SIF file, now starting, will take very long..."
-        export APPTAINER_BIND="${{PWD}}:${{PWD}}";
-        logfile=$PWD/data/checkpoints_dataprep/{wildcards.taxon}_fastqdump.log
+        logfile=$PWD/data/checkpoints_dataprep/{params.taxon}_fastqdump.log
         # Read the input file and process it
         while IFS=$'\\t' read -r species sra_ids; do
             echo "$PWD" &>> $logfile
@@ -123,8 +124,8 @@ rule download_fastq:
                 if [ ! -f "data/species/$species_fixed/fastq/${{id}}_1.fastq.gz" ] && [ ! -f "data/species/$species_fixed/fastq/${{id}}_2.fastq.gz" ]; then
                     echo "prefetch -O data/species/$species_fixed/sra $id" &>> $logfile
                     prefetch -O data/species/$species_fixed/sra $id &>> $logfile
-                    echo "fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -t {params.tmpdir} -e {params.threads}" &>> $logfile
-                    fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -t {params.tmpdir} -e {params.threads} &>> $logfile
+                    echo "fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -e {params.threads}" &>> $logfile
+                    fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -e {params.threads} &>> $logfile
                     rm data/species/$species_fixed/sra/$id/$id.sra
                     echo "gzip data/species/$species_fixed/fastq/${{id}}_1.fastq" &>> $logfile
                     gzip data/species/$species_fixed/fastq/${{id}}_1.fastq &>> $logfile
@@ -170,6 +171,7 @@ rule run_hisat2:
         runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
         log="data/checkpoints_dataprep/{params.taxon}_hisat2.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
