@@ -189,21 +189,29 @@ rule run_hisat2:
                 if [ ! -f "data/species/$species/hisat2/${{sra_id}}.sorted.bam" ]; then
                     echo "hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam" >> $log
                     hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam &>> $log
-                    samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam
-                    samtools sort --threads {params.threads} data/species/$species/hisat2/${{sra_id}}.bam -o data/species/$species/hisat2/${{sra_id}}.sorted.bam
-                    samtools index data/species/$species/hisat2/${{sra_id}}.sorted.bam
-                    rm data/species/$species/hisat2/${{sra_id}}.sam
-                    rm data/species/$species/hisat2/${{sra_id}}.bam
+                    echo "samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam" &>> $log
+                    samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam &>> $log
+                    echo "samtools sort --threads {params.threads} data/species/$species/hisat2/${{sra_id}}.bam -o data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
+                    samtools sort --threads {params.threads} data/species/$species/hisat2/${{sra_id}}.bam -o data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
+                    echo "samtools index data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
+                    samtools index data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
+                    echo "rm data/species/$species/hisat2/${{sra_id}}.sam" &>> $log
+                    rm data/species/$species/hisat2/${{sra_id}}.sam &>> $log
+                    echo "rm data/species/$species/hisat2/${{sra_id}}.bam" &>> $log
+                    rm data/species/$species/hisat2/${{sra_id}}.bam &>> $log
                 fi
             done
             # merge all bam files of the same species with samtools merge 
             if [ ! -f "data/species/$species/hisat2/${{species}}.sorted.bam" ]; then
-                samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam
-                samtools index data/species/$species/hisat2/${{species}}.sorted.bam
+                echo "samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam" &>> $log
+                samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam &>> $log
+                echo "samtools index data/species/$species/hisat2/${{species}}.sorted.bam &>> $log"
+                samtools index data/species/$species/hisat2/${{species}}.sorted.bam &>> $log
             fi
             # delete the individual bam files
             for sra_id in "${{sra_array[@]}}"; do
-                rm data/species/$species/hisat2/${{sra_id}}.sorted.bam
+                echo "rm data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
+                rm data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
             done
         done
         touch {output.done}
@@ -240,7 +248,7 @@ rule run_varus:
                 mkdir -p "data/species/$species/varus"
             fi
             IFS='_' read -r genus spec <<< "$species"
-            echo "runVARUS.pl --aligner=HISAT --runThreadN={params.threads} --speciesGenome=data/species/$species/genome/genome.fa --readFromTable=0 --createindex=1 --verbosity=5 --latinGenus=$genus --latinSpecies=$spec --varusParameters=VARUSparameters.txt --genomeDir data/species/$species/genome --outFileNamePrefix data/species/$species/varus/ --logfile=data/species/$species/varus/varus.log 2> data/species/$species/varus/varus.err" &>> $log
+            echo "runVARUS.pl --aligner=HISAT --runThreadN={params.threads} --speciesGenome=data/species/$species/genome/genome.fa --readFromTable=0 --createindex=1 --verbosity=5 --latinGenus=$genus --latinSpecies=$spec --varusParameters=VARUSparameters.txt --genomeDir ./ --outFileNamePrefix data/species/$species/varus/ --logfile=data/species/$species/varus/varus.log 2> data/species/$species/varus/varus.err" &>> $log
             runVARUS.pl --aligner=HISAT --runThreadN={params.threads} \
                 --speciesGenome=data/species/$species/genome/genome.fa \
                 --readFromTable=0 --createindex=1 --verbosity=5 \
@@ -261,12 +269,6 @@ rule cleanup_data:
         done = "data/checkpoints_dataprep/{taxon}_cleanup.done"
     shell:
         """
-        readarray -t lines < <(cat {input.done})
-        for line in "${{lines[@]}}"; do
-            # Replace the first space with an underscore in the species name part of the line
-            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
-            species=$(echo "$modified_line" | cut -f1)
-            echo "Eventually we want to do some cleanup here"
-        done
+        echo "Hello world"
         touch {output.done}
         """

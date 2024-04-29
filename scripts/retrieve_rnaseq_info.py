@@ -31,8 +31,8 @@ __author__ = "Katharina J. Hoff"
 def search_sra(species_name, email):
     Entrez.email = email  # Set the email for NCBI access
 
-    # Define the search query
-    query = f'"{species_name}"[Organism] AND "transcriptomic"[Source] AND "Illumina"[Platform] AND "PAIRED"[Layout]'
+    # Define the search query, we are on purpose not searching for field species name because a lot of diatom data comes from mixed cultures with bacteria
+    query = f'"{species_name}" AND "transcriptomic"[Source] AND "Illumina"[Platform] AND "PAIRED"[Layout] AND PolyA'
 
     # Use Entrez.esearch to search SRA
     handle = Entrez.esearch(db="sra", term=query)
