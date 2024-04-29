@@ -221,7 +221,7 @@ rule run_varus:
     input:
         varus_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_varus.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_download.done",
-        varus_dir = directory("data/varus")
+        varus_dir = "data/varus"
     output:
         done = "data/checkpoints_dataprep/{taxon}_varus.done"
     params:
