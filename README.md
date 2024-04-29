@@ -50,7 +50,34 @@ Bash dependencies (are usually available on a cluster): singularity, curl, zcat,
 
 ## Configuration
 
+### config.ini
+
 Contents of the config.ini file are important, adjust before running! Do not set the orthodb_path into your home directory, output is huge!
+
+### ~/profile/apptainer/config.v8+.yaml
+
+Due to a weird binding issue with current snakemake/SLURM (see Issues), you currently have to create a config file and fill it with the bindings directory for your singularity job. I hope this will be fixed, eventually.
+
+```
+mkdir -p ~/profile/apptainer/
+touch ~/profile/apptainer/config.v8+.yaml
+```
+
+Add the following content to the file (adapt to your own working directory):
+
+```
+use-singularity: True
+singularity-args: "\"--bind /home/hoffk83/git/braker-snake\""
+```
+
+### ~/.ncbi/user-settings.mkfg
+
+This config with contents must be present to avoid huge caching files when VARUS runs fastq-dump:
+
+```
+mkdir -p ~/.ncbi
+echo '/repository/user/cache-disabled = "true"' >> ~/.ncbi/user-settings.mkfg
+```
 
 ## Input data
 
@@ -67,20 +94,6 @@ Beware: currently, specifying a taxon that includes another taxon in the input i
 ## Running
 
 Execute this only in a place where you have space for many GBs of data, output is written to a subdirectory data and will be very, very big!
-
-Due to a weird binding issue with current snakemake/SLURM (see Issues), you have to create a config file and fill it with the bindings directory for your singularity job. I hope this will be fixed, eventually.
-
-```
-mkdir -p ~/profile/apptainer/
-touch ~/profile/apptainer/config.v8+.yaml
-```
-
-Add the following content to the file (adapt to your own working directory):
-
-```
-use-singularity: True
-singularity-args: "\"--bind /home/hoffk83/git/braker-snake\""
-```
 
 Run the pipeline:
 
