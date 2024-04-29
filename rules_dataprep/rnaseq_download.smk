@@ -90,7 +90,7 @@ rule download_fastq:
         threads = int(int(config['SLURM_ARGS']['cpus_per_task'])/4),
         tmpdir = config['SLURM_ARGS']['tmp_dir']
     singularity:
-        "docker://katharinahoff/varus-notebook:v0.0.2"
+        "docker://katharinahoff/varus-notebook:v0.0.5"
     threads: int(int(config['SLURM_ARGS']['cpus_per_task'])/4)
     resources:
         mem_mb=int(int(config['SLURM_ARGS']['mem_of_node'])/4),
@@ -170,7 +170,7 @@ rule run_hisat2:
         runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
-        log="data/checkpoints_dataprep/{wildcards.taxon}_hisat2.log"
+        log="data/checkpoints_dataprep/{params.taxon}_hisat2.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -209,58 +209,58 @@ rule run_hisat2:
         touch {output.done}
         """
 
+rule mk_varus_dir:
+    output:
+        varus_dir = directory("data/varus")
+    shell:
+        """
+        mkdir -p data/varus
+        """
+
 rule run_varus:
     input:
         varus_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_varus.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_download.done"
+        genome_done = "data/checkpoints_dataprep/{taxon}_download.done",
+        varus_dir = directory("data/varus")
     output:
         done = "data/checkpoints_dataprep/{taxon}_varus.done"
     params:
         threads = int(config['SLURM_ARGS']['cpus_per_task']),
-        tmpdir = config['SLURM_ARGS']['tmp_dir'],
         maxBatches = int(config['VARUS']['maxbatches']),
-        batchSize = int(config['VARUS']['batchsize'])
+        batchSize = int(config['VARUS']['batchsize']),
+        taxon=lambda wildcards: wildcards.taxon
     singularity:
-        "docker://katharinahoff/varus-notebook:v0.0.2"
-    threads: int(config['SLURM_ARGS']['cpus_per_task'])
+        "docker://katharinahoff/varus-notebook:v0.0.5"
+    threads: int(int(config['SLURM_ARGS']['cpus_per_task'])/4)
     resources:
-        mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
+        mem_mb=int(int(config['SLURM_ARGS']['mem_of_node'])/4),
         runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
-        log="data/checkpoints_dataprep/{wildcards.taxon}_varus.log"
+        log="data/checkpoints_dataprep/{params.taxon}_varus.log"
         echo "" > $log
         readarray -t lines < <(cat {input.varus_lst})
         for line in "${{lines[@]}}"; do
-            # Debugging output
             echo "Original line: $line" >> $log
-
-            # Fix potential issues by ensuring the correct command substitution
             modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
             species=$(echo "$modified_line" | cut -f1)
-
-            # Debugging output to check species variable
             echo "Modified species line: $species" >> $log
-
+            pwd >> $log
             if [ ! -d "data/species/$species/varus" ]; then
                 mkdir -p "data/species/$species/varus"
-                echo "Created directory for species: data/species/$species/varus" >> $log
             fi
-
-            # Copy parameter file and update paths
-            cp /opt/VARUS/example/VARUSparameters.txt data/species/$species/varus/VARUSparameters.txt
-            sed -i "s/--batchSize [0-9]*/--batchSize {params.batchSize}/" data/species/$species/varus/VARUSparameters.txt
-            sed -i "s|--genomeDir ./genome/|--genomeDir data/species/$species/genome/|" data/species/$species/varus/VARUSparameters.txt
-            sed -i "s/--maxBatches [0-9]*/--maxBatches {params.maxBatches}/" data/species/$species/varus/VARUSparameters.txt
-            sed -i "s|--pathToVARUS /home/mario/VARUS/Implementation/|--pathToVARUS /opt/VARUS/Implementation/|" data/species/$species/varus/VARUSparameters.txt
-            sed -i "s|--pathToParameters ./VARUSparameters.txt|--pathToParameters data/species/$species/varus/VARUSparameters.txt|" data/species/$species/varus/VARUSparameters.txt
-            sed -i "s|--outFileNamePrefix ./|--outFileNamePrefix data/species/$species/varus/|" data/species/$species/varus/VARUSparameters.txt
-            sed -i "s|--pathToRuns ./|--pathToRuns data/species/$species/varus/|" data/species/$species/varus/VARUSparameters.txt
-
-            # split the $species by the underscore, store result in two variables specpart1 and specpart2
-            IFS='_' read -r specpart1 specpart2 <<< $species
-            echo "Running VARUS for species: $species with $specpart1 and $specpart2" >> $log
-            echo "running varus now" >> $log
+            IFS='_' read -r genus spec <<< "$species"
+            echo "runVARUS.pl --aligner=HISAT --runThreadN={params.threads} --speciesGenome=data/species/$species/genome/genome.fa --readFromTable=0 --createindex=1 --verbosity=5 --latinGenus=$genus --latinSpecies=$spec --varusParameters=VARUSparameters.txt --genomeDir data/species/$species/genome --maxBatches {params.maxBatches} --batchSize {params.batchSize} --outFileNamePrefix data/species/$species/varus/ --logfile=data/species/$species/varus/varus.log 2> data/species/$species/varus/varus.err" &>> $log
+            runVARUS.pl --aligner=HISAT --runThreadN={params.threads} \
+                --speciesGenome=data/species/$species/genome/genome.fa \
+                --readFromTable=0 --createindex=1 --verbosity=5 \
+                --latinGenus=$genus --latinSpecies=$spec \
+                --varusParameters=VARUSparameters.txt \
+                --logfile=data/species/$species/varus/varus.log 2> data/species/$species/varus/varus.err
         done
         touch {output.done}
         """
+
+""" stored for later 
+
+"""

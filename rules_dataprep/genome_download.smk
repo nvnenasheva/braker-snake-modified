@@ -15,7 +15,7 @@
 #     This file is used in downstream analysis and must be stored in the 'data' directory.
 #
 # Singularity:
-#   - Uses a Docker container 'katharinahoff/varus-notebook:v0.0.1' converted to Singularity
+#   - Uses a Docker container 'katharinahoff/varus-notebook' converted to Singularity
 #     image format, ensuring that the NCBI datasets tool and all its dependencies are correctly
 #     configured and isolated from the host environment.
 #
@@ -33,7 +33,7 @@ rule download_assembly_info:
     wildcard_constraints:
         taxon="[^_]+"
     singularity:
-        "docker://katharinahoff/varus-notebook:v0.0.1"
+        "docker://katharinahoff/varus-notebook:v0.0.5"
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
@@ -250,7 +250,7 @@ rule run_genome_download_commands:
     wildcard_constraints:
         taxon="[^_]+"
     singularity:
-        "docker://katharinahoff/varus-notebook:v0.0.2"
+        "docker://katharinahoff/varus-notebook:v0.0.5"
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \

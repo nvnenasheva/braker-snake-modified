@@ -67,7 +67,7 @@ Add the following content to the file (adapt to your own working directory):
 
 ```
 use-singularity: True
-singularity-args: "\"--bind /home/hoffk83/git/braker-snake --bind /home/hoffk83/ncbi\""
+singularity-args: "\"--bind /home/hoffk83/git/braker-snake:/home/hoffk83/git/braker-snake --bind /home/hoffk83/ncbi:/home/hoffk83/ncbi\""
 ```
 
 ### ~/.ncbi/user-settings.mkfg
