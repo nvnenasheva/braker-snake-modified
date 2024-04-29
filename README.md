@@ -72,8 +72,6 @@ singularity-args: "\"--bind /home/hoffk83/git/braker-snake --bind /home/hoffk83/
 
 ### ~/.ncbi/user-settings.mkfg
 
-This is a problem. We cannot make this setting because then fasterq-dump will not work. :-(
-
 This config with contents must be present to avoid huge caching files when VARUS runs fastq-dump:
 
 ```
@@ -91,7 +89,9 @@ The input data is expected to be in the following format:
 
 You find a small example in input.csv.  You may want to modify input.csv
 
-Beware: currently, specifying a taxon that includes another taxon in the input is dangerous! Don't do this!
+**Warning:** pecifying a taxon that includes another taxon in the input is dangerous! Don't do this!
+
+The first workflow, `Snakefile_dataprep` will run all expensive tasks for one taxon in a loop on node. This means if you provide a taxon with extremely many species/genomes to process, this may lead to exceeding the runtime limit of the BRAIN. For example 7 libraries for a single species take ~3 hours for fasterq-dump and gzipping. This means, if you set the threshold to dowload at most 10 libs per species, and if every species in the taxon has RNA-Seq, then a taxon should have at most 16 species in order to have a good chance that the job will not die due to the runtime limit. Of course, if some  species have lots of RNA-Seq, these are VARUS-species, and they can be subtracted. 10 libraries may be a little excessive. Probably, we can do with 5.
 
 ## Running
 
@@ -105,6 +105,8 @@ module load singularity
 cd braker-snake
 snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=100 --use-apptainer
 ```
+
+The pipeline automatically submits some tasks via SLURM.
 
 ## Current DAG with example data
 

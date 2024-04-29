@@ -22,6 +22,10 @@
 # Parameters:
 #   - taxon: A wildcard parameter defining the specific taxon being processed. Extracted from the filename pattern.
 #   - email: An email address registered with NCBI, required for making API requests to NCBI databases.
+#
+# ToDo:
+#   - make the number of libraries to download random & configurable in terms of number by config.ini
+#   - make sure the libraries are mRNA and do not match microbiome or metagenome
 rule retrieve_rnaseq_info_from_sra:
     input:
         download_script = "scripts/retrieve_rnaseq_info.py",
@@ -52,12 +56,6 @@ rule retrieve_rnaseq_info_from_sra:
 #   possible.
 #   It must regrettably expected that this rule fails, repeatedly. Do not worry, just restart the
 #   workflow. The rule is implemented in a way that it will pick up where it left off. 
-# To Do:
-#   The failures are due to the fact that the NCBI servers are not always available.
-#   There's a tweet by Heng Li that may help to eventually debug this:
-#   https://twitter.com/lh3lh3/status/1779876367200387172
-#   It suggest to first download a prefetch file, and then execute the dump.
-# Purpose:
 #   This rule is designed to process a list of SRA accession numbers and use `fasterq-dump` to download
 #   paired-end fastq files for each accession. It handles the preparation of directory structures
 #   and the organization of downloaded files within those directories. This is crucial for downstream
@@ -85,7 +83,7 @@ rule retrieve_rnaseq_info_from_sra:
 rule download_fastq:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_download.done" # This is a dummy file to ensure that the download rule is executed after the retrieval rule
+        genome_done = "data/checkpoints_dataprep/{taxon}_download.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_fastqdump.done"
     params:
@@ -139,7 +137,7 @@ rule download_fastq:
         echo "touch {output.done}" &>> $logfile
         touch {output.done}
         """
-'''
+
 # Rule: run_hisat2
 # Description: This rule is responsible for building a HISAT2 index for RNA-seq data analysis, aligning RNA-seq reads to the genome, and processing the alignment outputs.
 # It performs several operations:
@@ -160,7 +158,7 @@ rule run_hisat2:
         download_done = "data/checkpoints_dataprep/{taxon}_fastqdump.done",
         genome_done = "data/checkpoints_dataprep/{taxon}_download.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_hisat2_index.done"
+        done = "data/checkpoints_dataprep/{taxon}_hisat2.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -172,7 +170,7 @@ rule run_hisat2:
         runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
-        log="data/checkpoints_dataprep/{wildcards.taxon}_hisat2_index.log"
+        log="data/checkpoints_dataprep/{wildcards.taxon}_hisat2.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -210,4 +208,59 @@ rule run_hisat2:
         done
         touch {output.done}
         """
-'''
+
+rule run_varus:
+    input:
+        varus_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_varus.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_download.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_varus.done"
+    params:
+        threads = int(config['SLURM_ARGS']['cpus_per_task']),
+        tmpdir = config['SLURM_ARGS']['tmp_dir'],
+        maxBatches = int(config['VARUS']['maxbatches']),
+        batchSize = int(config['VARUS']['batchsize'])
+    singularity:
+        "docker://katharinahoff/varus-notebook:v0.0.2"
+    threads: int(config['SLURM_ARGS']['cpus_per_task'])
+    resources:
+        mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
+        runtime=int(config['SLURM_ARGS']['max_runtime'])
+    shell:
+        """
+        log="data/checkpoints_dataprep/{wildcards.taxon}_varus.log"
+        echo "" > $log
+        readarray -t lines < <(cat {input.varus_lst})
+        for line in "${{lines[@]}}"; do
+            # Debugging output
+            echo "Original line: $line" >> $log
+
+            # Fix potential issues by ensuring the correct command substitution
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
+
+            # Debugging output to check species variable
+            echo "Modified species line: $species" >> $log
+
+            if [ ! -d "data/species/$species/varus" ]; then
+                mkdir -p "data/species/$species/varus"
+                echo "Created directory for species: data/species/$species/varus" >> $log
+            fi
+
+            # Copy parameter file and update paths
+            cp /opt/VARUS/example/VARUSparameters.txt data/species/$species/varus/VARUSparameters.txt
+            sed -i "s/--batchSize [0-9]*/--batchSize {params.batchSize}/" data/species/$species/varus/VARUSparameters.txt
+            sed -i "s|--genomeDir ./genome/|--genomeDir data/species/$species/genome/|" data/species/$species/varus/VARUSparameters.txt
+            sed -i "s/--maxBatches [0-9]*/--maxBatches {params.maxBatches}/" data/species/$species/varus/VARUSparameters.txt
+            sed -i "s|--pathToVARUS /home/mario/VARUS/Implementation/|--pathToVARUS /opt/VARUS/Implementation/|" data/species/$species/varus/VARUSparameters.txt
+            sed -i "s|--pathToParameters ./VARUSparameters.txt|--pathToParameters data/species/$species/varus/VARUSparameters.txt|" data/species/$species/varus/VARUSparameters.txt
+            sed -i "s|--outFileNamePrefix ./|--outFileNamePrefix data/species/$species/varus/|" data/species/$species/varus/VARUSparameters.txt
+            sed -i "s|--pathToRuns ./|--pathToRuns data/species/$species/varus/|" data/species/$species/varus/VARUSparameters.txt
+
+            # split the $species by the underscore, store result in two variables specpart1 and specpart2
+            IFS='_' read -r specpart1 specpart2 <<< $species
+            echo "Running VARUS for species: $species with $specpart1 and $specpart2" >> $log
+            echo "running varus now" >> $log
+        done
+        touch {output.done}
+        """
