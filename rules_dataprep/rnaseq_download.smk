@@ -44,7 +44,7 @@ rule retrieve_rnaseq_info_from_sra:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -l {output.varus_list} -f {output.fastqdump_lst}; \
+        python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -f {output.fastqdump_lst}; \
         touch {output.done}
         """
 
