@@ -250,14 +250,14 @@ rule run_varus:
                 mkdir -p "data/species/$species/varus"
             fi
             IFS='_' read -r genus spec <<< "$species"
-            echo "runVARUS.pl --aligner=HISAT --runThreadN={params.threads} --speciesGenome=../genome/genome.fa --readFromTable=0 --createindex=1 --verbosity=5 --latinGenus=$genus --latinSpecies=$spec --varusParameters=VARUSparameters.txt --outFileDir data/species/$species/varus/ --logfile=varus.log 2> data/species/$species/varus/varus.err" &>> $log
-            runVARUS.pl --aligner=HISAT --runThreadN={params.threads} \
+            echo "runVARUS.pl --aligner=HISAT --runThreadN={params.threads} --speciesGenome=../genome/genome.fa --readFromTable=0 --createindex=1 --verbosity=5 --latinGenus=$genus --latinSpecies=$spec --varusParameters=VARUSparameters.txt --outFileDir data/species/$species/varus 2> data/species/$species/varus/varus.err" &>> $log
+            ( runVARUS.pl --aligner=HISAT --runThreadN={params.threads} \
                 --speciesGenome=../genome/genome.fa \
                 --readFromTable=0 --createindex=1 --verbosity=5 \
                 --latinGenus=$genus --latinSpecies=$spec \
                 --varusParameters=VARUSparameters.txt \
-                --outFileDir data/species/$species/varus/ \
-                --logfile=varus.log 2> data/species/$species/varus/varus.err
+                --outFileDir data/species/$species/varus \
+                2> data/species/$species/varus/varus.err )
         done
         touch {output.done}
         """
