@@ -190,7 +190,7 @@ rule run_hisat2:
                     echo "hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam" >> $log
                     hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam &>> $log
                     echo "samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam" &>> $log
-                    samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam &>> $log
+                    samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam 2>> $log
                     echo "samtools sort --threads {params.threads} data/species/$species/hisat2/${{sra_id}}.bam -o data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
                     samtools sort --threads {params.threads} data/species/$species/hisat2/${{sra_id}}.bam -o data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
                     echo "samtools index data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
