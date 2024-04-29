@@ -7,7 +7,7 @@
 --exportObservationsToFile 1
 --exportParametersToFile 1
 --fastqDumpCall fastq-dump
---genomeDir 
+--genomeDir ./genome
 --lambda 10.0
 --lessInfo 1
 --loadAllOnce 0

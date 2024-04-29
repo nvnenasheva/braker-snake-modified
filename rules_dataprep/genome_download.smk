@@ -170,13 +170,31 @@ rule classify_species:
         except IOError:
             raise Exception(f"Error reading file: {tbl_file_path}")
 
+        # Make a subset of representative genomes, this can be seen by refseqCategory being not empty
+        representative_genomes = data[data['refseqCategory'].notna()]
+        # Sort this subset by the highest protein number
+        representative_genomes = representative_genomes.sort_values(by=['proteins'], ascending=False).drop_duplicates(subset='species', keep='first')
+        # go through representative genomes and check whether there are species duplicates, if yes, only keep the first
+        representative_genomes = representative_genomes.drop_duplicates(subset='species', keep='first')
+        # from data, get only those that are na in the refseq Cateogry, store in non_representative_genomes
+        non_representative_genomes = data[data['refseqCategory'].isna()]
+        # sort the non_representative_genomes by protein number
+        non_representative_genomes = non_representative_genomes.sort_values(by=['proteins'], ascending=False).drop_duplicates(subset='species', keep='first')
+        data = representative_genomes
+        # if data has no rows, create an empty data frame data that has exacly the same columns 
+        if data.empty:
+            data = pd.DataFrame(columns=['accession', 'species', 'status', 'proteins', 'contigN50', 'refseqCategory'])
+
+        # add to all_filtered genomes those lines from non_represenative genomes that have no species entry in all_filtered_genomes yet
+        for index, row in non_representative_genomes.iterrows():
+            if row['species'] not in data['species'].values:
+                data = pd.concat([data, pd.DataFrame([row])], ignore_index=True)
+
         # Annotated data filter
         annotated_data = data[data['proteins'] > 1000]
-        annotated_data = annotated_data.sort_values(by=['refseqCategory', 'proteins'], ascending=[False, False]).drop_duplicates(subset='species', keep='first')
-
+        
         # Blank data filter
         blank_data = data[(data['proteins'] <= 1000) | (data['proteins'].isna())]
-        blank_data = blank_data.sort_values(by=['contigN50'], ascending=False).drop_duplicates(subset='species', keep='first')
 
         # Output data to files
         try:

@@ -80,6 +80,8 @@ rule retrieve_rnaseq_info_from_sra:
 #     and ensuring transparency of the operation.
 #   - Upon successful execution of all commands, a 'done' file is created as a checkpoint indicating
 #     the completion of the task.
+#
+# This job uses at most 12 threads but occupies the entire RAM of a node because it stores data in RAM
 rule download_fastq:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
@@ -248,14 +250,14 @@ rule run_varus:
                 mkdir -p "data/species/$species/varus"
             fi
             IFS='_' read -r genus spec <<< "$species"
-            echo "runVARUS.pl --aligner=HISAT --runThreadN={params.threads} --speciesGenome=data/species/$species/genome/genome.fa --readFromTable=0 --createindex=1 --verbosity=5 --latinGenus=$genus --latinSpecies=$spec --varusParameters=VARUSparameters.txt --genomeDir ./ --outFileNamePrefix data/species/$species/varus/ --logfile=data/species/$species/varus/varus.log 2> data/species/$species/varus/varus.err" &>> $log
+            echo "runVARUS.pl --aligner=HISAT --runThreadN={params.threads} --speciesGenome=../genome/genome.fa --readFromTable=0 --createindex=1 --verbosity=5 --latinGenus=$genus --latinSpecies=$spec --varusParameters=VARUSparameters.txt --outFileDir data/species/$species/varus/ --logfile=varus.log 2> data/species/$species/varus/varus.err" &>> $log
             runVARUS.pl --aligner=HISAT --runThreadN={params.threads} \
-                --speciesGenome=data/species/$species/genome/genome.fa \
+                --speciesGenome=../genome/genome.fa \
                 --readFromTable=0 --createindex=1 --verbosity=5 \
                 --latinGenus=$genus --latinSpecies=$spec \
                 --varusParameters=VARUSparameters.txt \
                 --outFileDir data/species/$species/varus/ \
-                --logfile=data/species/$species/varus/varus.log 2> data/species/$species/varus/varus.err
+                --logfile=varus.log 2> data/species/$species/varus/varus.err
         done
         touch {output.done}
         """
