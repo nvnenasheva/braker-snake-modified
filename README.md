@@ -67,10 +67,12 @@ Add the following content to the file (adapt to your own working directory):
 
 ```
 use-singularity: True
-singularity-args: "\"--bind /home/hoffk83/git/braker-snake\""
+singularity-args: "\"--bind /home/hoffk83/git/braker-snake --bind /home/hoffk83/ncbi\""
 ```
 
 ### ~/.ncbi/user-settings.mkfg
+
+This is a problem. We cannot make this setting because then fasterq-dump will not work. :-(
 
 This config with contents must be present to avoid huge caching files when VARUS runs fastq-dump:
 
