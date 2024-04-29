@@ -106,6 +106,9 @@ rule assembly_json_to_tbl:
                 for entry in data:
                     accession = entry.get('accession', '')
                     species = entry['organism'].get('organismName', '')
+                    # only proceed if species does not match sp. as part of the string
+                    if "sp." in species or len(species.split(" ")) != 2 or "uncultured" in species:
+                        continue
                     status = entry['assemblyInfo'].get('assemblyStatus', '')
                     proteins = entry.get('annotationInfo', {}).get('stats', {}).get('geneCounts', {}).get('proteinCoding', 'N/A')
                     contigN50 = entry['assemblyStats'].get('contigN50', '')

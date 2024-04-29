@@ -87,13 +87,13 @@ rule download_fastq:
     output:
         done = "data/checkpoints_dataprep/{taxon}_fastqdump.done"
     params:
-        threads = int(int(config['SLURM_ARGS']['cpus_per_task'])/4),
+        threads = 10,
         tmpdir = config['SLURM_ARGS']['tmp_dir']
     singularity:
         "docker://katharinahoff/varus-notebook:v0.0.5"
     threads: 12
     resources:
-        mem_mb=int(int(config['SLURM_ARGS']['mem_of_node'])/int(config['SLURM_ARGS']['cpus_per_task'])*12),
+        mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
         runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
