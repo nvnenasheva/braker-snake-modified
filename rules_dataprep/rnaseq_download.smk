@@ -15,8 +15,6 @@
 # Outputs:
 #   - fastqdump_lst: A list file ('data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst') containing accession numbers
 #     and other parameters formatted for the `fastq-dump` utility, which can be used to download sequence data.
-#   - varus_list: A list file ('data/checkpoints_dataprep/{taxon}_rnaseq_for_varus.lst') used for VARUS, a pipeline that automatically
-#     optimizes parameters for RNA-seq data retrieval and assembly.
 #   - done: A simple checkpoint file ('data/checkpoints_dataprep/{taxon}_rnaseq_info.done') indicating successful completion of data retrieval.
 #
 # Parameters:
