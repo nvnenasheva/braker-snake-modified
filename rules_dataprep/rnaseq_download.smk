@@ -47,17 +47,18 @@ rule retrieve_rnaseq_info_from_sra:
 
 # Rule: download_fastq
 # Warning: 
-#   This rule takes extremely long! It is not run in SLURM parallel because i/o may be a bottleneck.
+#   This rule takes extremely long! It runs on SLURM but cannot take full advantage of a larger
+#   number of threads since i/o is the bottleneck. We are using /dev/shm to speed up as much
+#   possible.
 #   It must regrettably expected that this rule fails, repeatedly. Do not worry, just restart the
 #   workflow. The rule is implemented in a way that it will pick up where it left off. 
 # To Do:
 #   The failures are due to the fact that the NCBI servers are not always available.
 #   There's a tweet by Heng Li that may help to eventually debug this:
 #   https://twitter.com/lh3lh3/status/1779876367200387172
-#   This suggests to replace fastq-dump by fasterq-dump. This is not yet implemented in the rule.
 #   It suggest to first download a prefetch file, and then execute the dump.
 # Purpose:
-#   This rule is designed to process a list of SRA accession numbers and use `fastq-dump` to download
+#   This rule is designed to process a list of SRA accession numbers and use `fasterq-dump` to download
 #   paired-end fastq files for each accession. It handles the preparation of directory structures
 #   and the organization of downloaded files within those directories. This is crucial for downstream
 #   analysis such as RNA-seq data processing or genomic assemblies.
@@ -75,7 +76,7 @@ rule retrieve_rnaseq_info_from_sra:
 #   - The rule first sets up the environment to ensure correct directory binding when using Singularity.
 #   - It reads each line from the input file, processes the species name to replace spaces with underscores
 #     (for file naming consistency), and creates a directory for storing the downloaded fastq files.
-#   - For each SRA ID, `fastq-dump` is executed to retrieve paired-end reads, and the resultant files are
+#   - For each SRA ID, `fasterq-dump` is executed to retrieve paired-end reads, and the resultant files are
 #     immediately compressed using gzip to save space.
 #   - A log file is generated to capture the output and errors of the download process, helping in troubleshooting
 #     and ensuring transparency of the operation.
@@ -87,8 +88,15 @@ rule download_fastq:
         genome_done = "data/checkpoints_dataprep/{taxon}_download.done" # This is a dummy file to ensure that the download rule is executed after the retrieval rule
     output:
         done = "data/checkpoints_dataprep/{taxon}_fastqdump.done"
+    params:
+        threads = int(int(config['SLURM_ARGS']['cpus_per_task'])/4),
+        tmpdir = config['SLURM_ARGS']['tmp_dir']
     singularity:
-        "docker://teambraker/braker3:latest"
+        "docker://katharinahoff/varus-notebook:v0.0.2"
+    threads: int(int(config['SLURM_ARGS']['cpus_per_task'])/4)
+    resources:
+        mem_mb=int(int(config['SLURM_ARGS']['mem_of_node'])/4),
+        runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
         echo "I am done with the SIF file, now starting, will take very long..."
@@ -115,8 +123,8 @@ rule download_fastq:
             for id in "${{ids[@]}}"; do
                 # this is such a long and expensive process that we do not want it to execute if fastq.gz files already exist
                 if [ ! -f "data/species/$species_fixed/fastq/${{id}}_1.fastq.gz" ] && [ ! -f "data/species/$species_fixed/fastq/${{id}}_2.fastq.gz" ]; then
-                    echo "fastq-dump --split-files --outdir data/species/$species_fixed/fastq $id" &>> $logfile
-                    fastq-dump --split-files --outdir data/species/$species_fixed/fastq $id &>> $logfile
+                    echo "fasterq-dump $id --split-files -O data/species/$species_fixed/fastq -t {params.tmpdir} -e {params.threads}" &>> $logfile
+                    fasterq-dump $id --split-files -O data/species/$species_fixed/fastq -t {params.tmpdir} -e {params.threads} &>> $logfile
                     echo "gzip data/species/$species_fixed/fastq/${{id}}_1.fastq" &>> $logfile
                     gzip data/species/$species_fixed/fastq/${{id}}_1.fastq &>> $logfile
                     gzip data/species/$species_fixed/fastq/${{id}}_2.fastq
@@ -127,7 +135,7 @@ rule download_fastq:
         echo "touch {output.done}" &>> $logfile
         touch {output.done}
         """
-
+'''
 # Rule: run_hisat2
 # Description: This rule is responsible for building a HISAT2 index for RNA-seq data analysis, aligning RNA-seq reads to the genome, and processing the alignment outputs.
 # It performs several operations:
@@ -154,7 +162,7 @@ rule run_hisat2:
         threads = config['SLURM_ARGS']['cpus_per_task']
     singularity:
         "docker://teambraker/braker3:latest"
-    threads: 48
+    threads: int(config['SLURM_ARGS']['cpus_per_task'])
     resources:
         mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
         runtime=int(config['SLURM_ARGS']['max_runtime'])
@@ -198,3 +206,4 @@ rule run_hisat2:
         done
         touch {output.done}
         """
+'''

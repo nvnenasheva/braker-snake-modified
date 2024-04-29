@@ -39,7 +39,7 @@ rule download_assembly_info:
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
         datasets download genome taxon "{params.taxon}" --assembly-source genbank --dehydrated --filename {params.taxon}_ncbi.zip; \
         unzip -o {params.taxon}_ncbi.zip -d {params.taxon}_ncbi_dataset; \
-        mv {params.taxon}_ncbi_dataset/ncbi_dataset/data/checkpoints_dataprep/assembly_data_report.jsonl {output.raw_json}; \
+        mv {params.taxon}_ncbi_dataset/ncbi_dataset/data/assembly_data_report.jsonl {output.raw_json}; \
         rm -rf {params.taxon}_ncbi_dataset {params.taxon}_ncbi.zip; \
         mkdir -p data/species
         """
@@ -250,7 +250,7 @@ rule run_genome_download_commands:
     wildcard_constraints:
         taxon="[^_]+"
     singularity:
-        "docker://katharinahoff/varus-notebook:v0.0.1"
+        "docker://katharinahoff/varus-notebook:v0.0.2"
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \

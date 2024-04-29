@@ -85,7 +85,6 @@ singularity-args: "\"--bind /home/hoffk83/git/braker-snake\""
 Run the pipeline:
 
 ```
-# only on BRAIN cluster:
 mamba activate snakemake
 module load singularity
 cd braker-snake

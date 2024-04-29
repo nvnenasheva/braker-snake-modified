@@ -28,7 +28,9 @@ input_csv = config['INPUT']['input_csv']
 localrules: all, \
             download_assembly_info, assembly_json_to_tbl, classify_species, prepare_download_assemblies_from_ncbi, run_genome_download_commands, \
             download_orthodb_partitions, \
-            retrieve_rnaseq_info_from_sra, download_fastq
+            retrieve_rnaseq_info_from_sra
+            
+#, download_fastq
 
 # Read the input CSV file to get taxon and odb partition names
 # Assuming the CSV file is tab-separated
@@ -54,7 +56,7 @@ rule all:
         expand("data/checkpoints_dataprep/{taxon}_download.done", taxon=taxa_list),
         expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions),
         expand("data/checkpoints_dataprep/{taxon}_rnaseq_info.done", taxon=taxa_list),
-        expand("data/checkpoints_dataprep/{taxon}_hisat2_index.done", taxon=taxa_list)
+        expand("data/checkpoints_dataprep/{taxon}_fastqdump.done", taxon=taxa_list)
         # This is the place where you have to expand when you are waiting for more targets! For example,
         # we will implement RNA-Seq download, and this is where you have to add the RNA-Seq targets.
 
