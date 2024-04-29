@@ -97,7 +97,7 @@ Beware: currently, specifying a taxon that includes another taxon in the input i
 
 Execute this only in a place where you have space for many GBs of data, output is written to a subdirectory data and will be very, very big!
 
-Run the pipeline:
+Run the pipeline (on login-a or login-b):
 
 ```
 mamba activate snakemake

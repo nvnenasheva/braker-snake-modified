@@ -123,13 +123,17 @@ rule download_fastq:
             for id in "${{ids[@]}}"; do
                 # this is such a long and expensive process that we do not want it to execute if fastq.gz files already exist
                 if [ ! -f "data/species/$species_fixed/fastq/${{id}}_1.fastq.gz" ] && [ ! -f "data/species/$species_fixed/fastq/${{id}}_2.fastq.gz" ]; then
-                    echo "fasterq-dump $id --split-files -O data/species/$species_fixed/fastq -t {params.tmpdir} -e {params.threads}" &>> $logfile
-                    fasterq-dump $id --split-files -O data/species/$species_fixed/fastq -t {params.tmpdir} -e {params.threads} &>> $logfile
+                    echo "prefetch -O data/species/$species_fixed/sra $id" &>> $logfile
+                    prefetch -O data/species/$species_fixed/sra $id &>> $logfile
+                    echo "fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -t {params.tmpdir} -e {params.threads}" &>> $logfile
+                    fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -t {params.tmpdir} -e {params.threads} &>> $logfile
+                    rm data/species/$species_fixed/sra/$id/$id.sra
                     echo "gzip data/species/$species_fixed/fastq/${{id}}_1.fastq" &>> $logfile
                     gzip data/species/$species_fixed/fastq/${{id}}_1.fastq &>> $logfile
                     gzip data/species/$species_fixed/fastq/${{id}}_2.fastq
                 fi
             done
+            rm -rf data/species/$species_fixed/sra
         done < {input.fastqdump_lst} &>> $logfile
         
         echo "touch {output.done}" &>> $logfile
