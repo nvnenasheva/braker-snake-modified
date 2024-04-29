@@ -38,20 +38,23 @@ data = pd.read_csv(input_csv, header=None, sep=' ', names=['taxa', 'odb_partitio
 taxa_list = data['taxa'].tolist()
 unique_odb_partitions = data['odb_partition'].unique().tolist()
 
-# Create the checkpoint file directory for both workflows
+# Create the checkpoint file directory for both workflows if it does not exist yet
+checkptdir = "data/checkpoints_dataprep"
+if not Path(checkptdir).exists():
+    Path(checkptdir).mkdir(parents=True, exist_ok=True)
 
 # Include other rule files (assuming they define their own targets without using wildcards inappropriately)
-include: "rules/genome_download.smk"
-include: "rules/odb_download.smk"
-include: "rules/rnaseq_download.smk"
+include: "rules_dataprep/genome_download.smk"
+include: "rules_dataprep/odb_download.smk"
+include: "rules_dataprep/rnaseq_download.smk"
 
 # Main rule to process each taxon
 rule all:
     input:
-        expand("data/{taxon}_download.done", taxon=taxa_list),
+        expand("data/checkpoints_dataprep/{taxon}_download.done", taxon=taxa_list),
         expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions),
-        expand("data/{taxon}_rnaseq_info.done", taxon=taxa_list),
-        expand("data/{taxon}_hisat2_index.done", taxon=taxa_list)
+        expand("data/checkpoints_dataprep/{taxon}_rnaseq_info.done", taxon=taxa_list),
+        expand("data/checkpoints_dataprep/{taxon}_hisat2_index.done", taxon=taxa_list)
         # This is the place where you have to expand when you are waiting for more targets! For example,
         # we will implement RNA-Seq download, and this is where you have to add the RNA-Seq targets.
 

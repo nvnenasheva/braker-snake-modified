@@ -3,7 +3,7 @@
 #   This rule automates the retrieval of RNA sequencing (RNA-seq) information for specified taxa
 #   from the NCBI Sequence Read Archive (SRA). It utilizes a Python script to query NCBI for RNA-seq
 #   data related to unannotated species listed in a provided table. The rule processes each taxon
-#   listed in the 'data/{taxon}_blank.tbl', extracting necessary information for downstream RNA-seq
+#   listed in the 'data/checkpoints_dataprep/{taxon}_blank.tbl', extracting necessary information for downstream RNA-seq
 #   analysis pipelines.
 #
 # Inputs:
@@ -13,11 +13,11 @@
 #     species' RNA-seq data to retrieve.
 #
 # Outputs:
-#   - fastqdump_lst: A list file ('data/{taxon}_rnaseq_for_fastqdump.lst') containing accession numbers
+#   - fastqdump_lst: A list file ('data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst') containing accession numbers
 #     and other parameters formatted for the `fastq-dump` utility, which can be used to download sequence data.
-#   - varus_list: A list file ('data/{taxon}_rnaseq_for_varus.lst') used for VARUS, a pipeline that automatically
+#   - varus_list: A list file ('data/checkpoints_dataprep/{taxon}_rnaseq_for_varus.lst') used for VARUS, a pipeline that automatically
 #     optimizes parameters for RNA-seq data retrieval and assembly.
-#   - done: A simple checkpoint file ('data/{taxon}_rnaseq_info.done') indicating successful completion of data retrieval.
+#   - done: A simple checkpoint file ('data/checkpoints_dataprep/{taxon}_rnaseq_info.done') indicating successful completion of data retrieval.
 #
 # Parameters:
 #   - taxon: A wildcard parameter defining the specific taxon being processed. Extracted from the filename pattern.
@@ -25,11 +25,11 @@
 rule retrieve_rnaseq_info_from_sra:
     input:
         download_script = "scripts/retrieve_rnaseq_info.py",
-        unannotated_species = "data/{taxon}_blank.tbl"
+        unannotated_species = "data/checkpoints_dataprep/{taxon}_blank.tbl"
     output:
-        fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
-        varus_list = "data/{taxon}_rnaseq_for_varus.lst",
-        done = "data/{taxon}_rnaseq_info.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        varus_list = "data/checkpoints_dataprep/{taxon}_rnaseq_for_varus.lst",
+        done = "data/checkpoints_dataprep/{taxon}_rnaseq_info.done"
     params:
         taxon = lambda wildcards: wildcards.taxon,
         email = config['ESEARCH']['email']
@@ -63,12 +63,12 @@ rule retrieve_rnaseq_info_from_sra:
 #   analysis such as RNA-seq data processing or genomic assemblies.
 #
 # Inputs:
-#   - fastqdump_lst: A file ('data/{taxon}_rnaseq_for_fastqdump.lst') that lists species and their
+#   - fastqdump_lst: A file ('data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst') that lists species and their
 #     corresponding SRA accession numbers. Each line contains a species name and a comma-separated list
 #     of SRA IDs.
 #
 # Outputs:
-#   - done: A file ('data/{taxon}_fastqdump.done') that signals the successful completion of the downloads
+#   - done: A file ('data/checkpoints_dataprep/{taxon}_fastqdump.done') that signals the successful completion of the downloads
 #     and processing of all SRA data listed in the input file.
 #
 # Operations:
@@ -83,17 +83,17 @@ rule retrieve_rnaseq_info_from_sra:
 #     the completion of the task.
 rule download_fastq:
     input:
-        fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/{taxon}_download.done" # This is a dummy file to ensure that the download rule is executed after the retrieval rule
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_download.done" # This is a dummy file to ensure that the download rule is executed after the retrieval rule
     output:
-        done = "data/{taxon}_fastqdump.done"
+        done = "data/checkpoints_dataprep/{taxon}_fastqdump.done"
     singularity:
         "docker://teambraker/braker3:latest"
     shell:
         """
         echo "I am done with the SIF file, now starting, will take very long..."
         export APPTAINER_BIND="${{PWD}}:${{PWD}}";
-        logfile=$PWD/data/{wildcards.taxon}_fastqdump.log
+        logfile=$PWD/data/checkpoints_dataprep/{wildcards.taxon}_fastqdump.log
         # Read the input file and process it
         while IFS=$'\\t' read -r species sra_ids; do
             echo "$PWD" &>> $logfile
@@ -144,11 +144,11 @@ rule download_fastq:
 #          one executing hisat, one converting to bam, one sorting, one merging).
 rule run_hisat2:
     input:
-        fastqdump_lst = "data/{taxon}_rnaseq_for_fastqdump.lst",
-        download_done = "data/{taxon}_fastqdump.done",
-        genome_done = "data/{taxon}_download.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        download_done = "data/checkpoints_dataprep/{taxon}_fastqdump.done",
+        genome_done = "data/checkpoints_dataprep/{taxon}_download.done"
     output:
-        done = "data/{taxon}_hisat2_index.done"
+        done = "data/checkpoints_dataprep/{taxon}_hisat2_index.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -160,7 +160,7 @@ rule run_hisat2:
         runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
-        log="data/{wildcards.taxon}_hisat2_index.log"
+        log="data/checkpoints_dataprep/{wildcards.taxon}_hisat2_index.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
