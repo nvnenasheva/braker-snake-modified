@@ -3,6 +3,9 @@
 import argparse
 from Bio import Entrez
 import pandas as pd
+# generate a seed for consistent random sampling
+import random
+random.seed(42)
 
 __author__ = "Katharina J. Hoff"
 
@@ -71,6 +74,12 @@ def main(args):
     all_data = {}
     for species in species_list:
         nRecords, accessions_list = search_sra(species, args.email)
+        # randomly sort the accessions_list contents
+        random.shuffle(accessions_list)
+        ## if we want to return to VARUS, we need to delete the next two lines
+        # store only the first n accessions in accessions_list
+        if len(accessions_list) > args.n_threshold:
+            accessions_list = accessions_list[:args.n_threshold]
         all_data[species] = {'nRecords': nRecords, 'accessions': accessions_list}
 
 

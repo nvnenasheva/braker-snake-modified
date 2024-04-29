@@ -219,7 +219,9 @@ rule run_hisat2:
         touch {output.done}
         """
 
-
+'''
+# A perfectly fine VARUS rule that does not work simply because VARUS tried to chdir
+# chdir is not allowed in snakemake.
 rule run_varus:
     input:
         varus_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_varus.lst",
@@ -261,12 +263,11 @@ rule run_varus:
         done
         touch {output.done}
         """
-
+'''
 
 rule cleanup_data:
     input:
-        hisat_done = "data/checkpoints_dataprep/{taxon}_hisat2.done",
-        varus_done = "data/checkpoints_dataprep/{taxon}_varus.done"
+        hisat_done = "data/checkpoints_dataprep/{taxon}_hisat2.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_cleanup.done"
     shell:
