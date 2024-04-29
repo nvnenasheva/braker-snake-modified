@@ -32,7 +32,6 @@ rule retrieve_rnaseq_info_from_sra:
         unannotated_species = "data/checkpoints_dataprep/{taxon}_blank.tbl"
     output:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        varus_list = "data/checkpoints_dataprep/{taxon}_rnaseq_for_varus.lst",
         done = "data/checkpoints_dataprep/{taxon}_rnaseq_info.done"
     params:
         taxon = lambda wildcards: wildcards.taxon,
@@ -45,6 +44,7 @@ rule retrieve_rnaseq_info_from_sra:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
         python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -f {output.fastqdump_lst}; \
+        sleep(20)
         touch {output.done}
         """
 
