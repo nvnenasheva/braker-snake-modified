@@ -106,8 +106,11 @@ rule assembly_json_to_tbl:
                     accession = entry.get('accession', '')
                     species = entry['organism'].get('organismName', '')
                     # only proceed if species does not match sp. as part of the string
-                    if "sp." in species or len(species.split(" ")) != 2 or "uncultured" in species:
+                    if "sp." in species or "uncultured" in species:
                         continue
+                    if len(species.split(" ")) != 2:
+                        # cut off everthing after the first two words
+                        species = " ".join(species.split(" ")[:2])
                     status = entry['assemblyInfo'].get('assemblyStatus', '')
                     proteins = entry.get('annotationInfo', {}).get('stats', {}).get('geneCounts', {}).get('proteinCoding', 'N/A')
                     contigN50 = entry['assemblyStats'].get('contigN50', '')
@@ -264,7 +267,7 @@ rule execute_genome_download_commands:
     input:
         download_script = "data/checkpoints_dataprep/{taxon}_A04_download.sh"
     output:
-        done = touch("data/checkpoints_dataprep/{taxon}_A04_download.done")
+        done = "data/checkpoints_dataprep/{taxon}_A04_download.done"
     params:
         taxon = lambda wildcards: wildcards.taxon
     wildcard_constraints:
@@ -278,3 +281,187 @@ rule execute_genome_download_commands:
         touch {output.done}
         """
 
+# If a different assembly of a species was already annotated, and if we have these protein
+# sequences, we may use them to annotate the new assembly. This rule prepares a shell script
+# that downloads the protein sequences of the already annotated species from the NCBI database.
+rule prepare_legacy_protein_download:
+    input:
+        all_tbl = "data/checkpoints_dataprep/{taxon}_A02.tbl",
+        not_annotated_tbl = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl",
+        base_download_done = "data/checkpoints_dataprep/{taxon}_A04_download.done"
+    output:
+        legacy_proteins_script = "data/checkpoints_dataprep/{taxon}_A05_legacy_proteins_prep.sh"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
+    run:
+        df_all = pd.read_csv(input.all_tbl, sep="\t", usecols=['accession', 'species', 'proteins', 'contigN50'])
+        # drop all rows that do not have a number >1000 in proteins column
+        # this drops the organelle only annotations
+        df_all = df_all[df_all['proteins'] > 1000]
+        # if duplicates in species exist, dort by contigN50 and keep only the rows with the longest contigN50
+        df_all = df_all.sort_values(by=['contigN50'], ascending=False).drop_duplicates(subset='species', keep='first')
+        df_blank = pd.read_csv(input.not_annotated_tbl, sep="\t", usecols=['accession', 'species'])
+        # for every row in df_blank check whether the species exists in df_all, and whether the accession number is different
+        # if yes, print the accession number from df_all
+        try:
+            with open(f"data/checkpoints_dataprep/{params.taxon}_A05_legacy_proteins_prep.sh", 'w') as outfile:
+                command = ""
+                for index, row in df_blank.iterrows():
+                    if row['species'] in df_all['species'].values:
+                        if row['accession'] != df_all[df_all['species'] == row['species']]['accession'].values[0]:
+                            command += f"if [ ! -f data/species/{row['species'].replace(' ', '_')}/prot_legacy/proteins.faa ] && [ ! -f data/species/{row['species'].replace(' ', '_')}/prot_legacy/proteins.fa ]; then\n"
+                            command += f"\tmkdir data/species/{row['species'].replace(' ', '_')}/prot_legacy;\n"
+                            command += f"\tcd data/species/{row['species'].replace(' ', '_')}/prot_legacy;\n"
+                            command += f"\tdatasets download genome accession {df_all[df_all['species'] == row['species']]['accession'].values[0]} --filename {row['accession']}_legacy_proteins.zip --include protein;\n"
+                            command += f"\tunzip -o {row['accession']}_legacy_proteins.zip;\n"
+                            command += f"\tmv ncbi_dataset/data/{df_all[df_all['species'] == row['species']]['accession'].values[0]}/*.faa proteins.faa;\n"
+                            command += f"\trm -rf ncbi_dataset {row['accession']}_legacy_proteins.zip; rm README.md; cd ../../../..;\n"
+                            command += f"fi\n"
+                outfile.write(command)
+        except IOError:
+            raise Exception(f"Error writing to file: data/checkpoints_dataprep/{wildcards.taxon}_A05_legacy_proteins_prep.sh")
+
+
+rule execute_legacy_prot_download_commands:
+    input:
+        download_script = "data/checkpoints_dataprep/{taxon}_A05_legacy_proteins_prep.sh"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_A06_legacy_proteins_download.done"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
+    singularity:
+        "docker://katharinahoff/varus-notebook:v0.0.5"
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        bash {input.download_script}; \
+        touch {output.done}
+        """
+
+rule write_simplify_legacy_protein_headers_cmds:
+    input:
+        legacy_present = "data/checkpoints_dataprep/{taxon}_A06_legacy_proteins_download.done",
+        all_tbl = "data/checkpoints_dataprep/{taxon}_A02.tbl",
+        not_annotated_tbl = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
+    output:
+        simplified_legacy_proteins = "data/checkpoints_dataprep/{taxon}_A07_simplify_legacy_proteins.sh"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
+    run:
+        df_all = pd.read_csv(input.all_tbl, sep="\t", usecols=['accession', 'species', 'proteins', 'contigN50'])
+        # drop all rows that do not have a number >1000 in proteins column
+        # this drops the organelle only annotations
+        df_all = df_all[df_all['proteins'] > 1000]
+        # if duplicates in species exist, dort by contigN50 and keep only the rows with the longest contigN50
+        df_all = df_all.sort_values(by=['contigN50'], ascending=False).drop_duplicates(subset='species', keep='first')
+
+        df_blank = pd.read_csv(input.not_annotated_tbl, sep="\t", usecols=['accession', 'species'])
+        # for every row in df_blank check whether the species exists in df_all, and whether the accession number is different
+        # if yes, print the accession number from df_all
+        try:
+            with open(f"data/checkpoints_dataprep/{params.taxon}_A07_simplify_legacy_proteins.sh", 'w') as outfile:
+                command = ""
+                for index, row in df_blank.iterrows():
+                    if row['species'] in df_all['species'].values:
+                        if row['accession'] != df_all[df_all['species'] == row['species']]['accession'].values[0]:
+                            command += f"if [ ! -f data/species/{row['species'].replace(' ', '_')}/prot_legacy/proteins.fa ]; then\n"
+                            command += f"\tcd data/species/{row['species'].replace(' ', '_')}/prot_legacy; "
+                            command += f"\tsimplifyFastaHeaders.pl proteins.faa prot_ proteins.fa header.map;"
+                            command += f"\trm proteins.faa; cd ../../../..;\n"
+                            command += f"fi\n"
+                outfile.write(command)
+        except IOError:
+            raise Exception(f"Error writing to file: data/checkpoints_dataprep/{wildcards.taxon}_A06_legacy_prot_headers.sh")
+
+
+rule execute_fix_headers_commands:
+    input:
+        download_script = "data/checkpoints_dataprep/{taxon}_A07_simplify_legacy_proteins.sh"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_A08_fixed_protein_headers.done"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
+    singularity:
+        "docker://teambraker/braker3:latest"
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        bash {input.download_script}; \
+        touch {output.done}
+        """
+
+# shorten both the genomic and the protein fasta headers (annotated proteins only, not the legacy proteins)
+rule shorten_genomic_fasta_headers:
+    input:
+        genomic_download = "data/checkpoints_dataprep/{taxon}_A04_download.done",
+        annotated_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
+        blank_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_A09_shorten_genomic_headers.done"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
+    run:
+        df_anno = pd.read_csv(input.annotated_tbl_path, sep="\t", usecols=['species']) # here also proteins
+        df_blank = pd.read_csv(input.blank_tbl_path, sep="\t", usecols=['species'])
+        # concatenate the species of df_anno to df_blank
+        df_blank = pd.concat([df_anno, df_blank]) # here genome
+        # build paths to genome files from df_anno species field, where the space must be replaced by underscore
+        genome_files = [f"data/species/{species.replace(' ', '_')}/genome/genome.fa" for species in df_blank['species']]
+        # move all these files to genome.fa_original
+        for genome_file in genome_files:
+            shutil.move(genome_file, genome_file + "_original")
+            # store the new file name as string
+            original_genome_file = genome_file + "_original"
+            try:
+                with open(original_genome_file, 'r') as original_genome_handle:
+                    # if a line starts with ">" remove everthing after the first whitespace, including the whitespace
+                    # write the new line to a new file
+                    with open(genome_file, 'w') as new_genome_handle:
+                        for line in original_genome_handle:
+                            if line.startswith(">"):
+                                new_genome_handle.write(line.split(" ")[0] + "\n")
+                            else:
+                                new_genome_handle.write(line)
+            except IOError:
+                raise Exception(f"Error reading or writing to file: {original_genome_file} or {genome_file}")
+            # delete the original file
+            os.remove(original_genome_file)
+
+            
+        # build paths to protein files from df_anno species field, where the space must be replaced by underscore
+        protein_files = [f"data/species/{species.replace(' ', '_')}/prot/protein.faa" for species in df_anno['species']]
+        # move all these files to protein.faa_original
+        for protein_file in protein_files:
+            shutil.move(protein_file, protein_file + "_original")
+            # store the new file name as string
+            original_protein_file = protein_file + "_original"
+            try:
+                with open(original_protein_file, 'r') as protein_handle:
+                    # if a line starts with ">" remove everthing after the first whitespace, including the whitespace, replace possible dots by underscors
+                    # write the new line to a new file
+                    with open(protein_file, 'w') as new_protein_handle:
+                        for line in protein_handle:
+                            if line.startswith(">"):
+                                new_protein_handle.write(line.split(" ")[0].replace(".", "_") + "\n")
+                            else:
+                                new_protein_handle.write(line)
+            except IOError:
+                raise Exception(f"Error reading or writing to file: {original_protein_file} or {protein_file}")
+            # delete the original file
+            os.remove(original_protein_file)
+        # create checkpoint file
+        try:
+            with open(output.done, 'w') as done_handle:
+                done_handle.write("done")
+        except IOError:
+            raise Exception(f"Error writing to file: {output.done}")
