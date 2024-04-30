@@ -403,7 +403,8 @@ rule shorten_genomic_fasta_headers:
     input:
         genomic_download = "data/checkpoints_dataprep/{taxon}_A04_download.done",
         annotated_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
-        blank_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
+        blank_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl",
+        legacy_proteins_download = "data/checkpoints_dataprep/{taxon}_A08_fixed_protein_headers.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_A09_shorten_genomic_headers.done"
     params:

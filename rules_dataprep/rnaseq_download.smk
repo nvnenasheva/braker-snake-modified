@@ -80,7 +80,7 @@ rule retrieve_rnaseq_info_from_sra:
 rule run_download_fastq:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_A04_download.done"
+        genome_done = "data/checkpoints_dataprep/{taxon}_A09_shorten_genomic_headers.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B03_fastqdump.done"
     params:
@@ -141,7 +141,7 @@ rule run_hisat2_index:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
         download_done = "data/checkpoints_dataprep/{taxon}_B03_fastqdump.done",
-        genome_done = "data/checkpoints_dataprep/{taxon}_A04_download.done"
+        genome_done = "data/checkpoints_dataprep/{taxon}_A09_shorten_genomic_headers.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B04_hisat2_index.done"
     params:
