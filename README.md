@@ -108,6 +108,12 @@ snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_accou
 
 The pipeline automatically submits some tasks via SLURM.
 
+Testing the rudimentary annotation pipeline:
+
+```
+snakemake -s Snakefile_annotate --use-apptainer
+```
+
 ### Known issues
 
 Everything that relies on download from the web is fragile. For example, the error message `panic: runtime error: invalid memory address or nil pointer dereference` can happen when a ncbi datasets genome data download fails. Simply restart the workflow (do not delete previously obtained data). It will automatically try to fix it.
