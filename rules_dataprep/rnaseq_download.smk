@@ -149,6 +149,8 @@ rule run_hisat2_index:
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -184,6 +186,8 @@ rule run_hisat2:
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -221,6 +225,8 @@ rule run_sam_to_bam:
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -258,6 +264,8 @@ rule samtools_sort_single:
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -295,6 +303,8 @@ rule samtools_index_single:
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -330,6 +340,8 @@ rule cleanup_sam_bam_unsorted_files:
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
@@ -364,6 +376,8 @@ rule merge_bam:
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -398,6 +412,8 @@ rule cleanup_sorted_bam_files:
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
@@ -428,6 +444,8 @@ rule sort_merged_bam:
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
