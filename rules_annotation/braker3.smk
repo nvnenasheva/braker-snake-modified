@@ -6,11 +6,11 @@ rule run_braker3:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        wd=${{PWD}}/data/annotate/braker3; \
+        wd=braker3;
         braker.pl --genome=/opt/BRAKER/example/genome.fa \
-            --prot_seq=/opt/BRAKER/example/proteins.fa --bam=/opt/BRAKER/example/RNAseq.bam 
-            --workingdir=${{wd}} \
+            --prot_seq=/opt/BRAKER/example/proteins.fa --bam=/opt/BRAKER/example/RNAseq.bam \
+            --workingdir=$wd \
 	        --threads 8 --gm_max_intergenic 10000 --skipOptimize \
-            --busco_lineage eukaryota_odb10
+            --busco_lineage eukaryota_odb10 &> braker.log
         touch {output.done}
         """

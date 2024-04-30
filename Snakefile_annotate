@@ -40,7 +40,7 @@ include: "rules_annotation/braker3.smk"
 # Main rule to process each taxon
 rule all:
     input:
-        expand("{checkptdir}/braker3.done", taxon=taxa_list)
+        f"{checkptdir}/braker3.done"
         # This is the place where you have to expand when you are waiting for more targets! For example,
         # we will implement RNA-Seq download, and this is where you have to add the RNA-Seq targets.
 
