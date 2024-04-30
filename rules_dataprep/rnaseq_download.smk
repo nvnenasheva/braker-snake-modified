@@ -438,7 +438,7 @@ rule cleanup_sorted_bam_files:
 rule run_sort_merged_bam:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_B11_merge_bam.done"
+        genome_done = "data/checkpoints_dataprep/{taxon}_B10_merge_bam.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done"
     params:
