@@ -255,7 +255,7 @@ rule run_sam_to_bam:
         touch {output.done}
         """
 
-rule samtools_sort_single:
+rule run_samtools_sort_single:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_sam2bam.done"
@@ -294,7 +294,7 @@ rule samtools_sort_single:
         touch {output.done}
         """
 
-rule samtools_index_single:
+rule run_samtools_index_single:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_samtools_sort_single.done"
@@ -367,7 +367,7 @@ rule cleanup_sam_bam_unsorted_files:
         """
 
 
-rule merge_bam:
+rule run_merge_bam:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_cleanup_sam_bam_unsorted.done"
@@ -435,7 +435,7 @@ rule cleanup_sorted_bam_files:
         touch {output.done}
         """
 
-rule sort_merged_bam:
+rule run_sort_merged_bam:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_merge_bam.done"
