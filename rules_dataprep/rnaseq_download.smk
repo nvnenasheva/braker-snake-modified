@@ -216,10 +216,75 @@ rule run_hisat2:
         touch {output.done}
         """
 
-rule run_sam_to_bam:
+# remove bad libraries
+rule remove_bad_libraries:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_B05_hisat2.done"
+        hisat_out = "data/checkpoints_dataprep/{taxon}_B05_hisat2.log"
+    output:
+        new_fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        mapping_threshold = config['FASTERQDUMP']['minimial_aligned_reads_percent']
+    wildcard_constraints:
+        taxon="[^_]+"
+    run:
+        bad_sra = []
+        try:
+            # read the log file
+            with open(input.hisat_out, 'r') as f:
+                for line in f:
+                    # match the thing between slash and .sam /ERR12653961.sam
+                    sra_id = re.search(r'\/([A-Z0-9]+)\.sam', line)
+                    if sra_id:
+                        sra_id_string = sra_id.group(1)
+                    else:
+                        sra_id_string = None
+                    # match the number before % 0.01% overall alignment rate
+                    alignment_rate = re.search(r'([^%]+)% overall alignment rate', line)
+                    if alignment_rate:
+                        alignment_rate_float = float(alignment_rate.group(1))
+                    else:
+                        alignment_rate_float = None
+                    # we must assume to have some metagenomic libraries, and they may have pretty bad but still useful reads,
+                    # only remove the really bad ones, 20% is an arbitrary threshold for this
+                    if alignment_rate_float is not None and alignment_rate_float < mapping_threshold:
+                        bad_sra.append(sra_id_string)
+        except IOError:
+            raise Exception(f"Error writing to file: {input.hisat_out}")
+        try:
+            # now update fastqdump.lst, remove the bad SRA IDs
+            with open(input.fastqdump_lst, 'r') as f:
+                lines = f.readlines()
+        except IOError:
+            raise Exception(f"Error reading from file: {input.fastqdump_lst}")  
+
+        no_rnaseq_anymore = []
+        try:
+            with open(input.fastqdump_lst, 'w') as f:
+                for line in lines:
+                    species, sra_ids = line.split('\t')
+                    sra_ids = sra_ids.split(',')
+                    sra_ids = [sra_id for sra_id in sra_ids if sra_id not in bad_sra]
+                    # if sra_ids is not empty
+                    if sra_ids:
+                        f.write(f"{species}\t{','.join(sra_ids)}\n")
+                    else:
+                        no_rnaseq_anymore.append(species)
+        except IOError:
+            raise Exception(f"Error writing to file: {input.fastqdump_lst}")
+        for species in no_rnaseq_anymore:
+            print(f"Species {species} has no RNA-seq data anymore after filtering out bad libraries.")
+            # delete directory sra for species
+            shutil.rmtree(f"data/species/{species}/sra")
+            # delete directory fastq for species
+            shutil.rmtree(f"data/species/{species}/fastq")
+        
+
+
+rule run_sam_to_bam:
+    input:
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B06_sam2bam.done"
     params:
@@ -259,7 +324,7 @@ rule run_sam_to_bam:
 
 rule run_samtools_sort_single:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_B06_sam2bam.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B07_samtools_sort_single.done"
@@ -300,7 +365,7 @@ rule run_samtools_sort_single:
 
 rule run_samtools_index_single:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_B07_samtools_sort_single.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B08_samtools_index_single.done"
@@ -337,7 +402,7 @@ rule run_samtools_index_single:
 
 rule cleanup_sam_bam_unsorted_files:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_B08_samtools_index_single.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B09_cleanup_sam_bam_unsorted.done"
@@ -375,7 +440,7 @@ rule cleanup_sam_bam_unsorted_files:
 
 rule run_merge_bam:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_B09_cleanup_sam_bam_unsorted.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B10_merge_bam.done"
@@ -417,7 +482,7 @@ rule run_merge_bam:
 
 rule cleanup_sorted_bam_files:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_B10_merge_bam.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B11_cleanup_sorted_bam.done"
@@ -453,7 +518,7 @@ rule cleanup_sorted_bam_files:
 
 rule run_sort_merged_bam:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_B10_merge_bam.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done"
