@@ -110,7 +110,7 @@ The pipeline automatically submits some tasks via SLURM.
 
 ### Known issues
 
-Everything that relies on download from the web is fragile. For example, the error message `panic: runtime error: invalid memory address or nil pointer dereference` can happen when a ncbi datasets genome data download fails. Simply restart the workflow. It will automatically try to fix it.
+Everything that relies on download from the web is fragile. For example, the error message `panic: runtime error: invalid memory address or nil pointer dereference` can happen when a ncbi datasets genome data download fails. Simply restart the workflow (do not delete previously obtained data). It will automatically try to fix it.
 
 Currently, there seems to be a hisat2 problem that I still have to fix.
 

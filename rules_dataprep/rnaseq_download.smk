@@ -210,6 +210,8 @@ rule run_hisat2:
                 if [ ! -f "data/species/$species/hisat2/${{sra_id}}.sam" ]; then
                     echo "hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam" >> $log
                     hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam &>> $log
+                else
+                    echo "data/species/$species/hisat2/${{sra_id}}.sam already exists" &>> $log
                 fi
             done
         done
@@ -246,9 +248,11 @@ rule run_sam_to_bam:
             sra_ids=$(echo "$modified_line" | cut -f2)
             IFS=',' read -r -a sra_array <<< "$sra_ids"
             for sra_id in "${{sra_array[@]}}"; do
-                if [ ! -f "data/species/$species/hisat2/${{sra_id}}.bam" ]; then
+                if [ ! -f "data/species/$species/hisat2/${{sra_id}}.bam" ] && [ -f data/species/$species/hisat2/${{sra_id}}.sam ]; then
                     echo "samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam" &>> $log
                     samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam 2>> $log
+                else
+                    echo "data/species/$species/hisat2/${{sra_id}}.bam already exists" &>> $log
                 fi
             done
         done
@@ -285,9 +289,11 @@ rule run_samtools_sort_single:
             sra_ids=$(echo "$modified_line" | cut -f2)
             IFS=',' read -r -a sra_array <<< "$sra_ids"
             for sra_id in "${{sra_array[@]}}"; do
-                if [ ! -f "data/species/$species/hisat2/${{sra_id}}.sorted.bam" ]; then
+                if [ ! -f "data/species/$species/hisat2/${{sra_id}}.sorted.bam" ] && [ -f data/species/$species/hisat2/${{sra_id}}.bam ]; then
                     echo "samtools sort --threads {params.threads} data/species/$species/hisat2/${{sra_id}}.bam -o data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
                     samtools sort --threads {params.threads} data/species/$species/hisat2/${{sra_id}}.bam -o data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
+                else
+                    echo "data/species/$species/hisat2/${{sra_id}}.sorted.bam already exists" &>> $log
                 fi
             done
         done
@@ -355,11 +361,13 @@ rule cleanup_sam_bam_unsorted_files:
             sra_ids=$(echo "$modified_line" | cut -f2)
             IFS=',' read -r -a sra_array <<< "$sra_ids"
             for sra_id in "${{sra_array[@]}}"; do
-                if [ ! -f "data/species/$species/hisat2/${{sra_id}}.sorted.bam" ]; then
+                if [ -f data/species/$species/hisat2/${{sra_id}}.sam ] && [ data/species/$species/hisat2/${{sra_id}}.bam ]; then
                     echo "rm data/species/$species/hisat2/${{sra_id}}.sam" &>> $log
                     rm data/species/$species/hisat2/${{sra_id}}.sam &>> $log
                     echo "rm data/species/$species/hisat2/${{sra_id}}.bam" &>> $log
                     rm data/species/$species/hisat2/${{sra_id}}.bam &>> $log
+                else
+                    echo "data/species/$species/hisat2/${{sra_id}}.sam or data/species/$species/hisat2/${{sra_id}}.bam does not exist" &>> $log
                 fi
             done
         done
@@ -394,10 +402,16 @@ rule run_merge_bam:
             # Replace the first space with an underscore in the species name part of the line
             modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
             species=$(echo "$modified_line" | cut -f1)
+            # count number of files matching the pattern data/species/$species/hisat2/*.sorted.bam, excluding file data/species/$species/hisat2/${{species}}.sorted.bam
+            num_files=$(ls -1 data/species/$species/hisat2/*.sorted.bam | grep -v data/species/$species/hisat2/${{species}}.sorted.bam | wc -l)
             # merge all bam files of the same species with samtools merge 
-            if [ ! -f "data/species/$species/hisat2/${{species}}.bam" ]; then
+            if [ $num_files -gt 0 ] && [ ! -f "data/species/$species/hisat2/${{species}}.bam" ]; then
                 echo "samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam" &>> $log
                 samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.bam data/species/$species/hisat2/*.sorted.bam &>> $log
+            elif [ $numfiles -eq 1 ] && [ ! -f "data/species/$species/hisat2/${{species}}.bam" ] ; then
+                cp data/species/$species/hisat2/*.sorted.bam data/species/$species/hisat2/${{species}}.bam
+            else
+                echo "data/species/$species/hisat2/${{species}}.bam already exists" &>> $log
             fi
         done
         touch {output.done}
@@ -428,8 +442,12 @@ rule cleanup_sorted_bam_files:
             IFS=',' read -r -a sra_array <<< "$sra_ids"
             # delete the individual bam files
             for sra_id in "${{sra_array[@]}}"; do
-                echo "rm data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
-                rm data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
+                if [ -f "data/species/$species/hisat2/${{sra_id}}.sorted.bam" ]; then
+                    echo "rm data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
+                    rm data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
+                else
+                    echo "data/species/$species/hisat2/${{sra_id}}.sorted.bam does not exist" &>> $log
+                fi
             done
         done
         touch {output.done}
@@ -455,7 +473,7 @@ rule run_sort_merged_bam:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_samtools_sort_merged.log"
+        log="data/checkpoints_dataprep/{params.taxon}_B12_samtools_sort_merged.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -463,11 +481,11 @@ rule run_sort_merged_bam:
             modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
             species=$(echo "$modified_line" | cut -f1)
             # merge all bam files of the same species with samtools merge 
-            if [ ! -f "data/species/$species/hisat2/${{species}}.sorted.bam" ]; then
-                    echo "samtools sort --threads {params.threads} data/species/$species/hisat2/${{species}}.bam -o data/species/$species/hisat2/${{species}}.sorted.bam &>> $log" &>> $log
-                    samtools sort --threads {params.threads} data/species/$species/hisat2/${{species}}.bam -o data/species/$species/hisat2/rnaseq.s.bam &>> $log
-                    echo "rm data/species/$species/hisat2/${{species}}.bam"
-                fi
+            if [ ! -f "data/species/$species/hisat2/${{species}}.sorted.bam" ] && [ -f  data/species/$species/hisat2/${{species}}.bam ]; then
+                echo "samtools sort --threads {params.threads} data/species/$species/hisat2/${{species}}.bam -o data/species/$species/hisat2/${{species}}.sorted.bam &>> $log" &>> $log
+                samtools sort --threads {params.threads} data/species/$species/hisat2/${{species}}.bam -o data/species/$species/hisat2/rnaseq.s.bam &>> $log
+            else
+                echo "data/species/$species/hisat2/${{species}}.sorted.bam already exists" &>> $log
             fi
         done
         touch {output.done}
