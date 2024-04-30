@@ -381,9 +381,9 @@ rule merge_bam:
             modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
             species=$(echo "$modified_line" | cut -f1)
             # merge all bam files of the same species with samtools merge 
-            if [ ! -f "data/species/$species/hisat2/${{species}}.sorted.bam" ]; then
+            if [ ! -f "data/species/$species/hisat2/${{species}}.bam" ]; then
                 echo "samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam" &>> $log
-                samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam &>> $log
+                samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.bam data/species/$species/hisat2/*.sorted.bam &>> $log
             fi
         done
         touch {output.done}
@@ -415,6 +415,42 @@ rule cleanup_sorted_bam_files:
                 echo "rm data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
                 rm data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
             done
+        done
+        touch {output.done}
+        """
+
+rule sort_merged_bam:
+input:
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_merge_bam.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_sort_merged_bam.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    singularity:
+        "docker://teambraker/braker3:latest"
+    threads: int(config['SLURM_ARGS']['cpus_per_task'])
+    resources:
+        mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
+        runtime=int(config['SLURM_ARGS']['max_runtime'])
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        log="data/checkpoints_dataprep/{params.taxon}_samtools_sort_merged.log"
+        echo "" > $log
+        readarray -t lines < <(cat {input.fastqdump_lst})
+        for line in "${{lines[@]}}"; do
+            # Replace the first space with an underscore in the species name part of the line
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
+            # merge all bam files of the same species with samtools merge 
+            if [ ! -f "data/species/$species/hisat2/${{species}}.sorted.bam" ]; then
+                    echo "samtools sort --threads {params.threads} data/species/$species/hisat2/${{species}}.bam -o data/species/$species/hisat2/${{species}}.sorted.bam &>> $log" &>> $log
+                    samtools sort --threads {params.threads} data/species/$species/hisat2/${{species}}.bam -o data/species/$species/hisat2/rnaseq.s.bam &>> $log
+                    echo "rm data/species/$species/hisat2/${{species}}.bam"
+                fi
+            fi
         done
         touch {output.done}
         """
