@@ -14,7 +14,7 @@
 #
 # Outputs:
 #   - fastqdump_lst: A list file ('data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst') containing accession numbers
-#     and other parameters formatted for the `fastq-dump` utility, which can be used to download sequence data.
+#     and other parameters formatted for the `prefetch` and `fasterq-dump` utility, which can be used to download sequence data.
 #   - done: A simple checkpoint file ('data/checkpoints_dataprep/{taxon}_rnaseq_info.done') indicating successful completion of data retrieval.
 #
 # Parameters:
@@ -180,7 +180,7 @@ rule run_hisat2:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_B04_hisat2_index.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_B05_hisat2.done"
+        done = "data/checkpoints_dataprep/{taxon}_B05_hisat2.log"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -195,7 +195,7 @@ rule run_hisat2:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_B05_hisat2.log"
+        log={output.done}
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -213,14 +213,13 @@ rule run_hisat2:
                 fi
             done
         done
-        touch {output.done}
         """
 
 # remove bad libraries
 rule remove_bad_libraries:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
-        hisat_out = "data/checkpoints_dataprep/{taxon}_B05_hisat2.log"
+        hisat2_log = "data/checkpoints_dataprep/{taxon}_B05_hisat2.log"
     output:
         new_fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst"
     params:
