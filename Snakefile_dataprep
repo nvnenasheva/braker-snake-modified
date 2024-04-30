@@ -58,5 +58,3 @@ rule all:
     input:
         expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions),
         expand("data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done", taxon=taxa_list)
-
-print("Hello world, I think I am done!")
