@@ -38,7 +38,11 @@ rule retrieve_rnaseq_info_from_sra:
         taxon="[^_]+"
     singularity:
         "docker://teambraker/braker3:latest"
-    shell:
+    shell:rule all:
+    input:
+        expand("data/checkpoints_dataprep/{taxon}_download.done", taxon=taxa_list),
+        expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions),
+        expand("data/checkpoints_dataprep/{taxon}__sort_merged_bam.done", taxon=taxa_list)
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
         python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -f {output.fastqdump_lst}; \
@@ -79,7 +83,7 @@ rule retrieve_rnaseq_info_from_sra:
 #     the completion of the task.
 #
 # This job uses at most 12 threads but occupies the entire RAM of a node because it stores data in RAM
-rule download_fastq:
+rule run_download_fastq:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_download.done"
