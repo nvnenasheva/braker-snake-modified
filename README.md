@@ -102,7 +102,7 @@ Run the pipeline (on login-a or login-b):
 ```
 mamba activate snakemake
 module load singularity
-cd braker-snake
+#cd braker-snake
 snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=100 --use-apptainer
 ```
 

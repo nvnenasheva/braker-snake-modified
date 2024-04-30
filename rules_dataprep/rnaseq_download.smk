@@ -100,38 +100,39 @@ rule run_download_fastq:
         echo "I am done with the SIF file, now starting, will take very long..."
         logfile=$PWD/data/checkpoints_dataprep/{params.taxon}_B03_fastqdump.log
         # Read the input file and process it
-        while IFS=$'\\t' read -r species sra_ids; do
-            echo "$PWD" &>> $logfile
-            species_fixed=$(echo "$species" | sed 's/ /_/g')  # Replace space with underscore
-            echo "cd data/species/$species_fixed" &>> $logfile
-            cd data/species/$species_fixed
-            # if the directory fastq does not exist, yet
-            if [ ! -d "fastq" ]; then
-                echo "mkdir fastq" &>> $logfile
-                mkdir fastq  # Create a directory for the species
-            fi
-            echo "cd ../../../" &>> $logfile
-            cd ../../../ 
-            echo "$PWD" &>> $logfile
-            # Convert comma-separated string to array
-            IFS=',' read -ra ids <<< "$sra_ids"
-
-            # Process each SRA ID locally using the array
-            for id in "${{ids[@]}}"; do
-                # this is such a long and expensive process that we do not want it to execute if fastq.gz files already exist
-                if [ ! -f "data/species/$species_fixed/fastq/${{id}}_1.fastq.gz" ] && [ ! -f "data/species/$species_fixed/fastq/${{id}}_2.fastq.gz" ]; then
-                    echo "prefetch -O data/species/$species_fixed/sra $id" &>> $logfile
-                    prefetch -O data/species/$species_fixed/sra $id &>> $logfile
-                    echo "fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -e {params.threads}" &>> $logfile
-                    fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -e {params.threads} &>> $logfile
-                    rm data/species/$species_fixed/sra/$id/$id.sra
-                    echo "gzip data/species/$species_fixed/fastq/${{id}}_1.fastq" &>> $logfile
-                    gzip data/species/$species_fixed/fastq/${{id}}_1.fastq &>> $logfile
-                    gzip data/species/$species_fixed/fastq/${{id}}_2.fastq
+        if [ -s {input.fastqdump_lst} ] && [ $(wc -l < {input.fastqdump_lst}) -gt 0 ]; then
+            while IFS=$'\\t' read -r species sra_ids; do
+                echo "$PWD" &>> $logfile
+                species_fixed=$(echo "$species" | sed 's/ /_/g')  # Replace space with underscore
+                echo "cd data/species/$species_fixed" &>> $logfile
+                cd data/species/$species_fixed
+                # if the directory fastq does not exist, yet
+                if [ ! -d "fastq" ]; then
+                    echo "mkdir fastq" &>> $logfile
+                    mkdir fastq  # Create a directory for the species
                 fi
-            done
-            rm -rf data/species/$species_fixed/sra
-        done < {input.fastqdump_lst} &>> $logfile
+                echo "cd ../../../" &>> $logfile
+                cd ../../../ 
+                echo "$PWD" &>> $logfile
+                # Convert comma-separated string to array
+                IFS=',' read -ra ids <<< "$sra_ids"
+                # Process each SRA ID locally using the array
+                for id in "${{ids[@]}}"; do
+                    # this is such a long and expensive process that we do not want it to execute if fastq.gz files already exist
+                    if [ ! -f "data/species/$species_fixed/fastq/${{id}}_1.fastq.gz" ] && [ ! -f "data/species/$species_fixed/fastq/${{id}}_2.fastq.gz" ]; then
+                        echo "prefetch -O data/species/$species_fixed/sra $id" &>> $logfile
+                        prefetch -O data/species/$species_fixed/sra $id &>> $logfile
+                        echo "fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -e {params.threads}" &>> $logfile
+                        fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -e {params.threads} &>> $logfile
+                        rm data/species/$species_fixed/sra/$id/$id.sra
+                        echo "gzip data/species/$species_fixed/fastq/${{id}}_1.fastq" &>> $logfile
+                        gzip data/species/$species_fixed/fastq/${{id}}_1.fastq &>> $logfile
+                        gzip data/species/$species_fixed/fastq/${{id}}_2.fastq
+                    fi
+                done
+                rm -rf data/species/$species_fixed/sra
+            done < {input.fastqdump_lst} &>> $logfile
+        fi
         
         echo "touch {output.done}" &>> $logfile
         touch {output.done}
@@ -224,14 +225,14 @@ rule remove_bad_libraries:
         new_fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst"
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        mapping_threshold = config['FASTERQDUMP']['minimial_aligned_reads_percent']
+        mapping_threshold = float(config['FASTERQDUMP']['minimial_aligned_reads_percent'])
     wildcard_constraints:
         taxon="[^_]+"
     run:
         bad_sra = []
         try:
             # read the log file
-            with open(input.hisat_out, 'r') as f:
+            with open(input.hisat2_log, 'r') as f:
                 for line in f:
                     # match the thing between slash and .sam /ERR12653961.sam
                     sra_id = re.search(r'\/([A-Z0-9]+)\.sam', line)
@@ -247,10 +248,10 @@ rule remove_bad_libraries:
                         alignment_rate_float = None
                     # we must assume to have some metagenomic libraries, and they may have pretty bad but still useful reads,
                     # only remove the really bad ones, 20% is an arbitrary threshold for this
-                    if alignment_rate_float is not None and alignment_rate_float < mapping_threshold:
+                    if alignment_rate_float is not None and alignment_rate_float < params.mapping_threshold:
                         bad_sra.append(sra_id_string)
         except IOError:
-            raise Exception(f"Error writing to file: {input.hisat_out}")
+            raise Exception(f"Error reading from: {input.hisat2_log}")
         try:
             # now update fastqdump.lst, remove the bad SRA IDs
             with open(input.fastqdump_lst, 'r') as f:
@@ -260,7 +261,7 @@ rule remove_bad_libraries:
 
         no_rnaseq_anymore = []
         try:
-            with open(input.fastqdump_lst, 'w') as f:
+            with open(output.new_fastqdump_lst, 'w') as f:
                 for line in lines:
                     species, sra_ids = line.split('\t')
                     sra_ids = sra_ids.split(',')
@@ -271,15 +272,13 @@ rule remove_bad_libraries:
                     else:
                         no_rnaseq_anymore.append(species)
         except IOError:
-            raise Exception(f"Error writing to file: {input.fastqdump_lst}")
+            raise Exception(f"Error writing to file: {output.new_fastqdump_lst}")
         for species in no_rnaseq_anymore:
             print(f"Species {species} has no RNA-seq data anymore after filtering out bad libraries.")
-            # delete directory sra for species
-            shutil.rmtree(f"data/species/{species}/sra")
             # delete directory fastq for species
             shutil.rmtree(f"data/species/{species}/fastq")
+            touch("data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst")
         
-
 
 rule run_sam_to_bam:
     input:

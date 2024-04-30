@@ -31,7 +31,7 @@ localrules: all, \
             prepare_legacy_protein_download, execute_legacy_prot_download_commands, write_simplify_legacy_protein_headers_cmds, execute_fix_headers_commands, \
             shorten_genomic_fasta_headers, \
             download_orthodb_partitions, \
-            retrieve_rnaseq_info_from_sra, cleanup_sam_bam_unsorted_files, cleanup_sorted_bam_files
+            retrieve_rnaseq_info_from_sra, cleanup_sam_bam_unsorted_files, cleanup_sorted_bam_files, remove_bad_libraries
             
 #, download_fastq
 
@@ -58,3 +58,5 @@ rule all:
     input:
         expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions),
         expand("data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done", taxon=taxa_list)
+
+print("Hello world, I think I am done!")
