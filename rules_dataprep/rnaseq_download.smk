@@ -178,7 +178,7 @@ rule run_hisat2_index:
 rule run_hisat2:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_hisat_index.done"
+        genome_done = "data/checkpoints_dataprep/{taxon}_hisat2_index.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_hisat2.done"
     params:
