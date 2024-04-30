@@ -250,7 +250,7 @@ rule run_sam_to_bam:
         """
 
 rule samtools_sort_single:
-        input:
+    input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_sam2bam.done"
     output:
