@@ -215,7 +215,7 @@ rule run_hisat2:
 rule run_sam_to_bam:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_hisat.done"
+        genome_done = "data/checkpoints_dataprep/{taxon}_hisat2.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_sam2bam.done"
     params:
