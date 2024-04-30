@@ -420,7 +420,7 @@ rule cleanup_sorted_bam_files:
         """
 
 rule sort_merged_bam:
-input:
+    input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_merge_bam.done"
     output:
