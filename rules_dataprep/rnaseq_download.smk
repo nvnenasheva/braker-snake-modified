@@ -139,25 +139,46 @@ rule download_fastq:
         touch {output.done}
         """
 
-# Rule: run_hisat2
-# Description: This rule is responsible for building a HISAT2 index for RNA-seq data analysis, aligning RNA-seq reads to the genome, and processing the alignment outputs.
-# It performs several operations:
-# 1. Reads a list of species and their corresponding SRA IDs from a specified file.
-# 2. For each species, it checks if the necessary directories exist, and if not, it creates them.
-# 3. It then proceeds to build the HISAT2 index for the genome of each species.
-# 4. For each SRA ID associated with a species, the rule runs HISAT2 to align the RNA-seq reads to the genome, converts the output SAM to BAM format, sorts and indexes the BAM files.
-# 5. It merges all BAM files for a given species into a single sorted BAM file, indexes it, and cleans up individual BAM files to save space.
-# 6. Finally, it touches a file to indicate completion of the process.
-# This rule utilizes significant computational resources (as specified in SLURM_ARGS and passed to the rule) and runs in a Singularity container to ensure environment consistency.
-# WARNING: this rule executes once for each taxon. Depending on genome size and the number of SRA IDs, this rule may take a long time to complete.
-#          this may exceed the runtime limit on our cluster!
-#          If we figure out that it exceeds indeed the runtime limit, we may have to further take this apart (e.g. one rule building the index,
-#          one executing hisat, one converting to bam, one sorting, one merging).
-rule run_hisat2:
+rule run_hisat2_index:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
         download_done = "data/checkpoints_dataprep/{taxon}_fastqdump.done",
         genome_done = "data/checkpoints_dataprep/{taxon}_download.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_hisat2_index.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    singularity:
+        "docker://teambraker/braker3:latest"
+    threads: int(config['SLURM_ARGS']['cpus_per_task'])
+    resources:
+        mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
+        runtime=int(config['SLURM_ARGS']['max_runtime'])
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        log="data/checkpoints_dataprep/{params.taxon}_hisat2_index.log"
+        echo "" > $log
+        readarray -t lines < <(cat {input.fastqdump_lst})
+        for line in "${{lines[@]}}"; do
+            # Replace the first space with an underscore in the species name part of the line
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
+            if [ ! -d "data/species/$species/hisat2" ]; then
+                mkdir -p "data/species/$species/hisat2"
+            fi
+            echo "hisat2-build -p {params.threads} data/species/$species/genome/genome.fa data/species/$species/genome/genome" >> $log
+            which hisat2-build &>> $log
+            hisat2-build -p {params.threads} data/species/$species/genome/genome.fa data/species/$species/genome/genome &>> $log
+        done
+        touch {output.done}
+        """
+
+rule run_hisat2:
+    input:
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_hisat_index.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_hisat2.done"
     params:
@@ -179,37 +200,216 @@ rule run_hisat2:
             # Replace the first space with an underscore in the species name part of the line
             modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
             species=$(echo "$modified_line" | cut -f1)
-            if [ ! -d "data/species/$species/hisat2" ]; then
-                mkdir -p "data/species/$species/hisat2"
-            fi
-            echo "hisat2-build -p {params.threads} data/species/$species/genome/genome.fa data/species/$species/genome/genome" >> $log
-            which hisat2-build &>> $log
-            hisat2-build -p {params.threads} data/species/$species/genome/genome.fa data/species/$species/genome/genome &>> $log
+            sra_ids=$(echo "$modified_line" | cut -f2)
+            IFS=',' read -r -a sra_array <<< "$sra_ids"
+            for sra_id in "${{sra_array[@]}}"; do
+                if [ ! -f "data/species/$species/hisat2/${{sra_id}}.sam" ]; then
+                    echo "hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam" >> $log
+                    hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam &>> $log
+                fi
+            done
+        done
+        touch {output.done}
+        """
+
+rule run_sam_to_bam:
+    input:
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_hisat.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_sam2bam.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    singularity:
+        "docker://teambraker/braker3:latest"
+    threads: int(config['SLURM_ARGS']['cpus_per_task'])
+    resources:
+        mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
+        runtime=int(config['SLURM_ARGS']['max_runtime'])
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        log="data/checkpoints_dataprep/{params.taxon}_sam2bam.log"
+        echo "" > $log
+        readarray -t lines < <(cat {input.fastqdump_lst})
+        for line in "${{lines[@]}}"; do
+            # Replace the first space with an underscore in the species name part of the line
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
+            sra_ids=$(echo "$modified_line" | cut -f2)
+            IFS=',' read -r -a sra_array <<< "$sra_ids"
+            for sra_id in "${{sra_array[@]}}"; do
+                if [ ! -f "data/species/$species/hisat2/${{sra_id}}.bam" ]; then
+                    echo "samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam" &>> $log
+                    samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam 2>> $log
+                fi
+            done
+        done
+        touch {output.done}
+        """
+
+rule samtools_sort_single:
+        input:
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_sam2bam.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_samtools_sort_single.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    singularity:
+        "docker://teambraker/braker3:latest"
+    threads: int(config['SLURM_ARGS']['cpus_per_task'])
+    resources:
+        mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
+        runtime=int(config['SLURM_ARGS']['max_runtime'])
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        log="data/checkpoints_dataprep/{params.taxon}_samtools_sort_single.log"
+        echo "" > $log
+        readarray -t lines < <(cat {input.fastqdump_lst})
+        for line in "${{lines[@]}}"; do
+            # Replace the first space with an underscore in the species name part of the line
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
             sra_ids=$(echo "$modified_line" | cut -f2)
             IFS=',' read -r -a sra_array <<< "$sra_ids"
             for sra_id in "${{sra_array[@]}}"; do
                 if [ ! -f "data/species/$species/hisat2/${{sra_id}}.sorted.bam" ]; then
-                    echo "hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam" >> $log
-                    hisat2 -p {params.threads} -x data/species/$species/genome/genome -1 data/species/$species/fastq/${{sra_id}}_1.fastq.gz -2 data/species/$species/fastq/${{sra_id}}_2.fastq.gz -S data/species/$species/hisat2/${{sra_id}}.sam &>> $log
-                    echo "samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam" &>> $log
-                    samtools view --threads {params.threads} -bS data/species/$species/hisat2/${{sra_id}}.sam > data/species/$species/hisat2/${{sra_id}}.bam 2>> $log
                     echo "samtools sort --threads {params.threads} data/species/$species/hisat2/${{sra_id}}.bam -o data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
                     samtools sort --threads {params.threads} data/species/$species/hisat2/${{sra_id}}.bam -o data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
-                    echo "samtools index data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
-                    samtools index data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
+                fi
+            done
+        done
+        touch {output.done}
+        """
+
+rule samtools_index_single:
+    input:
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_samtools_sort_single.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_samtools_index_single.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    singularity:
+        "docker://teambraker/braker3:latest"
+    threads: int(config['SLURM_ARGS']['cpus_per_task'])
+    resources:
+        mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
+        runtime=int(config['SLURM_ARGS']['max_runtime'])
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        log="data/checkpoints_dataprep/{params.taxon}_samtools_index_single.log"
+        echo "" > $log
+        readarray -t lines < <(cat {input.fastqdump_lst})
+        for line in "${{lines[@]}}"; do
+            # Replace the first space with an underscore in the species name part of the line
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
+            sra_ids=$(echo "$modified_line" | cut -f2)
+            IFS=',' read -r -a sra_array <<< "$sra_ids"
+            for sra_id in "${{sra_array[@]}}"; do
+                echo "samtools index data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
+                samtools index data/species/$species/hisat2/${{sra_id}}.sorted.bam &>> $log
+            done
+        done
+        touch {output.done}
+        """
+
+rule cleanup_sam_bam_unsorted_files:
+    input:
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_samtools_index_single.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_cleanup_sam_bam_unsorted.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        log="data/checkpoints_dataprep/{params.taxon}_cleanup_sam_bam_unsorted.log"
+        echo "" > $log
+        readarray -t lines < <(cat {input.fastqdump_lst})
+        for line in "${{lines[@]}}"; do
+            # Replace the first space with an underscore in the species name part of the line
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
+            sra_ids=$(echo "$modified_line" | cut -f2)
+            IFS=',' read -r -a sra_array <<< "$sra_ids"
+            for sra_id in "${{sra_array[@]}}"; do
+                if [ ! -f "data/species/$species/hisat2/${{sra_id}}.sorted.bam" ]; then
                     echo "rm data/species/$species/hisat2/${{sra_id}}.sam" &>> $log
                     rm data/species/$species/hisat2/${{sra_id}}.sam &>> $log
                     echo "rm data/species/$species/hisat2/${{sra_id}}.bam" &>> $log
                     rm data/species/$species/hisat2/${{sra_id}}.bam &>> $log
                 fi
             done
+        done
+        touch {output.done}
+        """
+
+
+rule merge_bam:
+    input:
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_cleanup_sam_bam_unsorted.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_merge_bam.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    singularity:
+        "docker://teambraker/braker3:latest"
+    threads: int(config['SLURM_ARGS']['cpus_per_task'])
+    resources:
+        mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
+        runtime=int(config['SLURM_ARGS']['max_runtime'])
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        log="data/checkpoints_dataprep/{params.taxon}_samtools_sort_single.log"
+        echo "" > $log
+        readarray -t lines < <(cat {input.fastqdump_lst})
+        for line in "${{lines[@]}}"; do
+            # Replace the first space with an underscore in the species name part of the line
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
             # merge all bam files of the same species with samtools merge 
             if [ ! -f "data/species/$species/hisat2/${{species}}.sorted.bam" ]; then
                 echo "samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam" &>> $log
                 samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam &>> $log
-                echo "samtools index data/species/$species/hisat2/${{species}}.sorted.bam &>> $log"
-                samtools index data/species/$species/hisat2/${{species}}.sorted.bam &>> $log
             fi
+        done
+        touch {output.done}
+        """
+
+rule cleanup_sorted_bam_files:
+    input:
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_merge_bam.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_cleanup_sorted_bam.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
+        log="data/checkpoints_dataprep/{params.taxon}_cleanup_single_bam.log"
+        echo "" > $log
+        readarray -t lines < <(cat {input.fastqdump_lst})
+        for line in "${{lines[@]}}"; do
+            # Replace the first space with an underscore in the species name part of the line
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
+            sra_ids=$(echo "$modified_line" | cut -f2)
+            IFS=',' read -r -a sra_array <<< "$sra_ids"
             # delete the individual bam files
             for sra_id in "${{sra_array[@]}}"; do
                 echo "rm data/species/$species/hisat2/${{sra_id}}.sorted.bam" &>> $log
@@ -264,14 +464,3 @@ rule run_varus:
         touch {output.done}
         """
 '''
-
-rule cleanup_data:
-    input:
-        hisat_done = "data/checkpoints_dataprep/{taxon}_hisat2.done"
-    output:
-        done = "data/checkpoints_dataprep/{taxon}_cleanup.done"
-    shell:
-        """
-        echo "Hello world"
-        touch {output.done}
-        """
