@@ -27,10 +27,10 @@
 rule retrieve_rnaseq_info_from_sra:
     input:
         download_script = "scripts/retrieve_rnaseq_info.py",
-        unannotated_species = "data/checkpoints_dataprep/{taxon}_blank.tbl"
+        unannotated_species = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
     output:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        done = "data/checkpoints_dataprep/{taxon}_rnaseq_info.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        done = "data/checkpoints_dataprep/{taxon}_B02_rnaseq_info.done"
     params:
         taxon = lambda wildcards: wildcards.taxon,
         email = config['ESEARCH']['email']
@@ -81,10 +81,10 @@ rule retrieve_rnaseq_info_from_sra:
 # This job uses at most 12 threads but occupies the entire RAM of a node because it stores data in RAM
 rule run_download_fastq:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_download.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_A04_download.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_fastqdump.done"
+        done = "data/checkpoints_dataprep/{taxon}_B03_fastqdump.done"
     params:
         threads = 10,
         taxon = lambda wildcards: wildcards.taxon
@@ -100,7 +100,7 @@ rule run_download_fastq:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
         echo "I am done with the SIF file, now starting, will take very long..."
-        logfile=$PWD/data/checkpoints_dataprep/{params.taxon}_fastqdump.log
+        logfile=$PWD/data/checkpoints_dataprep/{params.taxon}_B03_fastqdump.log
         # Read the input file and process it
         while IFS=$'\\t' read -r species sra_ids; do
             echo "$PWD" &>> $logfile
@@ -141,11 +141,11 @@ rule run_download_fastq:
 
 rule run_hisat2_index:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        download_done = "data/checkpoints_dataprep/{taxon}_fastqdump.done",
-        genome_done = "data/checkpoints_dataprep/{taxon}_download.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        download_done = "data/checkpoints_dataprep/{taxon}_B03_fastqdump.done",
+        genome_done = "data/checkpoints_dataprep/{taxon}_A04_download.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_hisat2_index.done"
+        done = "data/checkpoints_dataprep/{taxon}_B04_hisat2_index.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -160,7 +160,7 @@ rule run_hisat2_index:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_hisat2_index.log"
+        log="data/checkpoints_dataprep/{params.taxon}_B04_hisat2_index.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -179,10 +179,10 @@ rule run_hisat2_index:
 
 rule run_hisat2:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_hisat2_index.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_B04_hisat2_index.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_hisat2.done"
+        done = "data/checkpoints_dataprep/{taxon}_B05_hisat2.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -197,7 +197,7 @@ rule run_hisat2:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_hisat2.log"
+        log="data/checkpoints_dataprep/{params.taxon}_B05_hisat2.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -218,10 +218,10 @@ rule run_hisat2:
 
 rule run_sam_to_bam:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_hisat2.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_B05_hisat2.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_sam2bam.done"
+        done = "data/checkpoints_dataprep/{taxon}_B06_sam2bam.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -236,7 +236,7 @@ rule run_sam_to_bam:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_sam2bam.log"
+        log="data/checkpoints_dataprep/{params.taxon}_B06_sam2bam.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -257,10 +257,10 @@ rule run_sam_to_bam:
 
 rule run_samtools_sort_single:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_sam2bam.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_B06_sam2bam.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_samtools_sort_single.done"
+        done = "data/checkpoints_dataprep/{taxon}_B07_samtools_sort_single.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -275,7 +275,7 @@ rule run_samtools_sort_single:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_samtools_sort_single.log"
+        log="data/checkpoints_dataprep/{params.taxon}_B07_samtools_sort_single.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -296,10 +296,10 @@ rule run_samtools_sort_single:
 
 rule run_samtools_index_single:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_samtools_sort_single.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_B07_samtools_sort_single.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_samtools_index_single.done"
+        done = "data/checkpoints_dataprep/{taxon}_B08_samtools_index_single.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -314,7 +314,7 @@ rule run_samtools_index_single:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_samtools_index_single.log"
+        log="data/checkpoints_dataprep/{params.taxon}_B08_samtools_index_single.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -333,10 +333,10 @@ rule run_samtools_index_single:
 
 rule cleanup_sam_bam_unsorted_files:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_samtools_index_single.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_B08_samtools_index_single.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_cleanup_sam_bam_unsorted.done"
+        done = "data/checkpoints_dataprep/{taxon}_B09_cleanup_sam_bam_unsorted.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -345,7 +345,7 @@ rule cleanup_sam_bam_unsorted_files:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_cleanup_sam_bam_unsorted.log"
+        log="data/checkpoints_dataprep/{params.taxon}_B09_cleanup_sam_bam_unsorted.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -369,10 +369,10 @@ rule cleanup_sam_bam_unsorted_files:
 
 rule run_merge_bam:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_cleanup_sam_bam_unsorted.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_B09_cleanup_sam_bam_unsorted.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_merge_bam.done"
+        done = "data/checkpoints_dataprep/{taxon}_B10_merge_bam.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -387,7 +387,7 @@ rule run_merge_bam:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_samtools_sort_single.log"
+        log="data/checkpoints_dataprep/{params.taxon}_B10_samtools_sort_single.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -405,10 +405,10 @@ rule run_merge_bam:
 
 rule cleanup_sorted_bam_files:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_merge_bam.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_B10_merge_bam.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_cleanup_sorted_bam.done"
+        done = "data/checkpoints_dataprep/{taxon}_B11_cleanup_sorted_bam.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -417,7 +417,7 @@ rule cleanup_sorted_bam_files:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_cleanup_single_bam.log"
+        log="data/checkpoints_dataprep/{params.taxon}_B11_cleanup_single_bam.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -437,10 +437,10 @@ rule cleanup_sorted_bam_files:
 
 rule run_sort_merged_bam:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_merge_bam.done"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
+        genome_done = "data/checkpoints_dataprep/{taxon}_B11_merge_bam.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_sort_merged_bam.done"
+        done = "data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']

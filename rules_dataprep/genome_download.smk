@@ -27,7 +27,7 @@
 # 5. Clean up all intermediate files and directories to maintain a clean working environment.
 rule download_assembly_info:
     output:
-        raw_json = "data/checkpoints_dataprep/{taxon}.json"
+        raw_json = "data/checkpoints_dataprep/{taxon}_A01.json"
     params:
         taxon = lambda wildcards: wildcards.taxon
     wildcard_constraints:
@@ -66,9 +66,9 @@ rule download_assembly_info:
 # 5. Handle and report any file input/output errors during reading and writing operations.
 rule assembly_json_to_tbl:
     input:
-        json_file = "data/checkpoints_dataprep/{taxon}.json"
+        json_file = "data/checkpoints_dataprep/{taxon}_A01.json"
     output:
-        processed_tbl = "data/checkpoints_dataprep/{taxon}.tbl"
+        processed_tbl = "data/checkpoints_dataprep/{taxon}_A02.tbl"
     params:
         taxon = lambda wildcards: wildcards.taxon
     wildcard_constraints:
@@ -76,9 +76,8 @@ rule assembly_json_to_tbl:
     run:
         taxon = wildcards.taxon
         print(taxon)
-        json_file_path = f"data/checkpoints_dataprep/{taxon}.json"
-        tbl_file_path = f"data/checkpoints_dataprep/{taxon}.tbl"
-
+        json_file_path = f"data/checkpoints_dataprep/{taxon}_A01.json"
+        tbl_file_path = f"data/checkpoints_dataprep/{taxon}_A02.tbl"
         try:
             print(json_file_path)
             # Read the entire file into a single string
@@ -149,19 +148,19 @@ rule assembly_json_to_tbl:
 # 3. Both subsets are written to separate output files in a tab-separated format.
 rule classify_species:
     input:
-        tbl_file = "data/checkpoints_dataprep/{taxon}.tbl"
+        tbl_file = "data/checkpoints_dataprep/{taxon}_A02.tbl"
     output:
-        already_annotated_tbl = "data/checkpoints_dataprep/{taxon}_annotated.tbl",
-        not_annotated_tbl = "data/checkpoints_dataprep/{taxon}_blank.tbl"
+        already_annotated_tbl = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
+        not_annotated_tbl = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
     params:
         taxon = lambda wildcards: wildcards.taxon
     wildcard_constraints:
         taxon="[^_]+"
     run:
         taxon = wildcards.taxon
-        tbl_file_path = f"data/checkpoints_dataprep/{taxon}.tbl"
-        annotated_tbl_path = f"data/checkpoints_dataprep/{taxon}_annotated.tbl"
-        blank_tbl_path = f"data/checkpoints_dataprep/{taxon}_blank.tbl"
+        tbl_file_path = f"data/checkpoints_dataprep/{taxon}_A02.tbl"
+        annotated_tbl_path = f"data/checkpoints_dataprep/{taxon}_A03_annotated.tbl"
+        blank_tbl_path = f"data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
         
         # Read the data, handling non-numeric proteins values
         try:
@@ -210,10 +209,10 @@ rule classify_species:
 # output is a shell script tailored for each taxon that handles directory creation, data retrieval, and data extraction.
 rule prepare_download_assemblies_from_ncbi:
     input:
-        annotated_tbl_file = "data/checkpoints_dataprep/{taxon}_annotated.tbl",
-        blank_tbl_file = "data/checkpoints_dataprep/{taxon}_blank.tbl"
+        annotated_tbl_file = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
+        blank_tbl_file = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
     output:
-        download_script = "data/checkpoints_dataprep/{taxon}_download.sh"
+        download_script = "data/checkpoints_dataprep/{taxon}_A04_download.sh"
     params:
         taxon = lambda wildcards: wildcards.taxon
     wildcard_constraints:
@@ -263,9 +262,9 @@ rule prepare_download_assemblies_from_ncbi:
 # The rule is not parallelized as the data input/output operations are likely to be the bottleneck.
 rule execute_genome_download_commands:
     input:
-        download_script = "data/checkpoints_dataprep/{taxon}_download.sh"
+        download_script = "data/checkpoints_dataprep/{taxon}_A04_download.sh"
     output:
-        done = touch("data/checkpoints_dataprep/{taxon}_download.done")
+        done = touch("data/checkpoints_dataprep/{taxon}_A04_download.done")
     params:
         taxon = lambda wildcards: wildcards.taxon
     wildcard_constraints:
