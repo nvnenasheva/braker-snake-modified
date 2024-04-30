@@ -38,11 +38,7 @@ rule retrieve_rnaseq_info_from_sra:
         taxon="[^_]+"
     singularity:
         "docker://teambraker/braker3:latest"
-    shell:rule all:
-    input:
-        expand("data/checkpoints_dataprep/{taxon}_download.done", taxon=taxa_list),
-        expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions),
-        expand("data/checkpoints_dataprep/{taxon}__sort_merged_bam.done", taxon=taxa_list)
+    shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
         python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -f {output.fastqdump_lst}; \
