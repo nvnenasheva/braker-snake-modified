@@ -9,11 +9,11 @@ rule aggregate_results:
         annotated_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
         blank_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
     output:
-        table = "data/checkpoints_dataprep/{taxon}_C01_data.csv",
-        odb_dir = config['BRAKER']['orthodb_path']
+        table = "data/checkpoints_dataprep/{taxon}_C01_data.csv"
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        input_csv = config['INPUT']['input_csv']
+        input_csv = config['INPUT']['input_csv'],
+        odb_dir = config['BRAKER']['orthodb_path']
     wildcard_constraints:
         taxon="[^_]+"
     run:
@@ -22,7 +22,7 @@ rule aggregate_results:
         # find out what odb parition applies to the currently given taxon
         odb_partition = in_csv[in_csv['taxa'] == params.taxon]['odb_partition'].values[0]
         # build path to odb file, they sit in data/params.odbdir/odb_partition.fa
-        odb_file = "data/" +params.odb_dir + "/" + odb_partition + ".fa"
+        odb_file = "data/" + params.odb_dir + "/" + odb_partition + ".fa"
         # check if the odb file exists, use try except and die if not
         try:
             with open(odb_file):
