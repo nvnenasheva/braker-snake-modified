@@ -116,6 +116,8 @@ snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_accou
 
 The pipeline automatically submits some tasks via SLURM.
 
+After data aggregation, you have to manually add a suitable busco_lineage to the csv file for every species. Annoying... but don't forget that.
+
 Testing the rudimentary annotation pipeline:
 
 ```
