@@ -22,6 +22,7 @@ Annotation workflow
 2. Run BRAKER2 on the small un-annotated genomes without RNA-Seq
 3. Run BUSCO on all the protein data sets and compile a summary
 4. Run Galba on large genomes without RNA-Seq
+5. Run BUSCO on the annotation data sets and compile a summary
 
 (For Clara's project, we do not need other steps, but the pipeline could serve as template for further expansion in the future.)
 
