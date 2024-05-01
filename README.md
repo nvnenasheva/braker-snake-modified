@@ -2,19 +2,26 @@
 
 Simple snakemake workflows for handling BRAKER on large data sets to prepare training data for DeepFinder. 
 
-Ultimately it should do this:
+Data prepration workflow:
 
-    1. Download the available assemblies for taxa from NCBI
-    2. Prioritize in case of species duplications (first choice: annotated refseq, second choice: max N50)
-    3. Separate into annotated and un-annotated genomes
-    4. Download the respective data sets from NCBI datasets (either genome only, or genome, annotation, proteins)
-    5. Download OrthoDB partitions
-    6. Check availability of RNA-Seq data for all downloaded genomes
-    7. If less than N libraries, full download, alignment, sorting (N to be determined later) <- currently implemented up to here
-    8. <Running VARUS appears impossible with the chdir(s)> Otherwise randomly select N libraries for download.
-    9. Run BRAKER3 on the un-annotated genomes with RNA-Seq <- this will go into a separate Snakefile because it should launch one job per species, not per taxon, runtime issue otherwise
-    10. Run BRAKER2 on the un-annotated genomes without RNA-Seq
-    11. Run BUSCO on all the protein data sets and compile a summary
+1. Download the available assemblies for taxa from NCBI
+2. Prioritize in case of species duplications (first choice: annotated refseq, second choice: max N50)
+3. Separate into annotated and un-annotated genomes
+4. Download the respective data sets from NCBI datasets (either genome only, or genome, annotation, proteins)
+5. Download OrthoDB partitions
+6. Check availability of RNA-Seq data for all downloaded genomes
+7. Download at most N RNA-Seq libraries (VARUS idea was discarded)
+8. Align RNA-Seq libraries
+9. Discard bad libraries with now alignment rate
+10. Postprocess the aligned libraries to serve as input for BRAKER (merge, sort, index)
+11. Output a csv table per taxon that can be merged in order to launch the annotation workflow
+
+Annotation workflow
+
+1. Run BRAKER3 on the un-annotated genomes with RNA-Seq <- this will go into a separate Snakefile because it should launch one job per species, not per taxon, runtime issue otherwise
+2. Run BRAKER2 on the small un-annotated genomes without RNA-Seq
+3. Run BUSCO on all the protein data sets and compile a summary
+4. Run Galba on large genomes without RNA-Seq
 
 (For Clara's project, we do not need other steps, but the pipeline could serve as template for further expansion in the future.)
 
