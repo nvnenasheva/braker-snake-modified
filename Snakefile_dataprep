@@ -53,10 +53,10 @@ if not Path(checkptdir).exists():
 include: "rules_dataprep/genome_download.smk"
 include: "rules_dataprep/odb_download.smk"
 include: "rules_dataprep/rnaseq_download.smk"
-#include: "rules_dataprep/aggregate.smk"
+include: "rules_dataprep/aggregate.smk"
 
 # Main rule to process each taxon
 rule all:
     input:
         expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions),
-        expand("data/checkpoints_dataprep/{taxon}__C01_data.csv", taxon=taxa_list)
+        expand("data/checkpoints_dataprep/{taxon}_C01_data.csv", taxon=taxa_list)
