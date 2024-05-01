@@ -54,26 +54,6 @@ try:
                 f.write(f"{species}\t{','.join(sra_ids)}\n")
             else:
                 no_rnaseq_anymore.append(species)
-            for bad_sra_id in bad_sra_ids:
-                bad_fq1 = args.path + "/" + species +  "/fastq/" + bad_sra_id + "_1.fastq.gz"
-                bad_fq2 = args.path + "/" + species +  "/fastq/" + bad_sra_id + "_2.fastq.gz"
-                bad_sam = args.path + "/" + species +  "/hisat2/" + bad_sra_id + ".sam"
-                # if file exists
-                if os.path.exists(bad_fq1):
-                    os.remove(bad_fq1)
-                if os.path.exists(bad_fq2):
-                    os.remove(bad_fq2)
-                if os.path.exists(bad_sam):
-                    os.remove(bad_sam)
-                fastq_dir = args.path + "/" + species + "/fastq"
-                # id directory exists
-                if os.path.exists(fastq_dir):
-                    if not os.listdir(fastq_dir):
-                        os.rmdir(fastq_dir)
-                hisat2_dir = args.path + "/" + species + "/hisat2"
-                if os.path.exists(hisat2_dir):
-                    if not os.listdir(hisat2_dir):
-                        os.rmdir(hisat2_dir)
 except IOError:
     raise Exception(f"Error writing to file {args.output}!")
 

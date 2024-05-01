@@ -212,7 +212,8 @@ rule run_hisat2:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_B04_hisat2_index.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_B05_hisat2.done"
+        done = "data/checkpoints_dataprep/{taxon}_B05_hisat2.done",
+        log = "data/checkpoints_dataprep/{taxon}_B05_hisat2.log"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -227,7 +228,7 @@ rule run_hisat2:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}";
-        log=data/checkpoints_dataprep/{params.taxon}_B05_hisat2.log
+        log={output.log}
         # if file $log does not exist yet
         if [ ! -f $log ]; then
             touch $log
