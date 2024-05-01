@@ -130,8 +130,12 @@ Everything that relies on download from the web is fragile. For example, the err
 
 If a fastqdump was interrupted during gzip (because sth else killed the pipeline), you may have to go to the fastq folders of species and delete the unfinished library files because restarting. Otherwise, hisat2 will fail on the incomplete input
 
-## Current DAG with example data
+## Current DAGs with example data
 
-(can always be generated with `snakemake -s Snakefile_dataprep --dag | dot -Tpng > dag.png`, potentially not on BRAIN because dot may not be installed)
+(can always be generated with `snakemake -s Snakefile_dataprep --dag | dot -Tpng > dag1.png`, potentially not on BRAIN because dot may not be installed)
 
-![DAG](dag.png)
+![DAG](dag1.png)
+
+(can always be generated with `snakemake -s Snakefile_annotate --dag | dot -Tpng > dag2.png`, potentially not on BRAIN because dot may not be installed)
+
+![DAG](dag2.png)
