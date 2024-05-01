@@ -274,8 +274,6 @@ rule remove_bad_libraries:
         touch {output.done}
         '''
 
-        
-
 rule run_sam_to_bam:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
