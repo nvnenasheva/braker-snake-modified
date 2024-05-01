@@ -111,7 +111,7 @@ Run the pipeline (on login-a or login-b):
 mamba activate snakemake
 module load singularity
 #cd braker-snake
-snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=100 --use-apptainer
+snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer
 ```
 
 The pipeline automatically submits some tasks via SLURM.

@@ -22,7 +22,7 @@ rule aggregate_results:
         # find out what odb parition applies to the currently given taxon
         odb_partition = in_csv[in_csv['taxa'] == params.taxon]['odb_partition'].values[0]
         # build path to odb file, they sit in data/params.odbdir/odb_partition.fa
-        odb_file = "data/" + params.odb_dir + "/" + odb_partition + ".fa"
+        odb_file = params.odb_dir + "/" + odb_partition + ".fa"
         # check if the odb file exists, use try except and die if not
         try:
             with open(odb_file):

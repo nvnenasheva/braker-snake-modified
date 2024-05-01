@@ -212,7 +212,7 @@ rule run_hisat2:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
         genome_done = "data/checkpoints_dataprep/{taxon}_B04_hisat2_index.done"
     output:
-        done = "data/checkpoints_dataprep/{taxon}_B05_hisat2.log"
+        done = "data/checkpoints_dataprep/{taxon}_B05_hisat2.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
         threads = config['SLURM_ARGS']['cpus_per_task']
@@ -226,9 +226,12 @@ rule run_hisat2:
         runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
-        export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log={output.done}
-        echo "" > $log
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}";
+        log=data/checkpoints_dataprep/{params.taxon}_B05_hisat2.log
+        # if file $log does not exist yet
+        if [ ! -f $log ]; then
+            touch $log
+        fi
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
             # Replace the first space with an underscore in the species name part of the line
@@ -245,81 +248,38 @@ rule run_hisat2:
                 fi
             done
         done
+        touch {output.done}
         """
 
+# remove bad libraries
 # remove bad libraries
 rule remove_bad_libraries:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
         hisat2_log = "data/checkpoints_dataprep/{taxon}_B05_hisat2.log"
     output:
-        new_fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst"
+        done = "data/checkpoints_dataprep/{taxon}_B06_remove_bad_libraries.done",
+        new_fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        mapping_threshold = float(config['FASTERQDUMP']['minimial_aligned_reads_percent'])
+        mapping_threshold = float(config['FASTERQDUMP']['minimial_aligned_reads_percent']),
     wildcard_constraints:
         taxon="[^_]+"
-    run:
-        bad_sra = []
-        try:
-            # read the log file
-            with open(input.hisat2_log, 'r') as f:
-                for line in f:
-                    # match the thing between slash and .sam /ERR12653961.sam
-                    sra_id = re.search(r'\/([A-Z0-9]+)\.sam', line)
-                    if sra_id:
-                        sra_id_string = sra_id.group(1)
-                    else:
-                        sra_id_string = None
-                    print("Processing " + str(sra_id_string))
-                    # match the number before % 0.01% overall alignment rate
-                    alignment_rate = re.search(r'([^%]+)% overall alignment rate', line)
-                    if alignment_rate:
-                        alignment_rate_float = float(alignment_rate.group(1))
-                    else:
-                        alignment_rate_float = None
-                    print("Alignment rate float is " + str(alignment_rate_float))
-                    # we must assume to have some metagenomic libraries, and they may have pretty bad but still useful reads,
-                    # only remove the really bad ones, 20% is an arbitrary threshold for this
-                    if alignment_rate_float is not None and alignment_rate_float < params.mapping_threshold:
-                        bad_sra.append(sra_id_string)
-                        print("I am appending SRA to bad list for " + str(sra_id_string))
-        except IOError:
-            raise Exception(f"Error reading from: {input.hisat2_log}")
-        try:
-            # now update fastqdump.lst, remove the bad SRA IDs
-            with open(input.fastqdump_lst, 'r') as f:
-                lines = f.readlines()
-        except IOError:
-            raise Exception(f"Error reading from file: {input.fastqdump_lst}")  
+    shell:
+        '''
+        log=data/checkpoints_dataprep/{params.taxon}_B06_remove_bad_libraries.log
+        cmd="python3 scripts/remove_bad_sra.py -t {params.mapping_threshold} -l {input.hisat2_log} -o {output.new_fastqdump_lst} -p data/species -i {input.fastqdump_lst}"
+        echo $cmd &> $log
+        $cmd &>> $log
+        touch {output.done}
+        '''
 
-        no_rnaseq_anymore = []
-        try:
-            with open(output.new_fastqdump_lst, 'w') as f:
-                for line in lines:
-                    species, sra_ids = line.split('\t')
-                    sra_ids = sra_ids.split(',')
-                    sra_ids = [sra_id for sra_id in sra_ids if sra_id not in bad_sra]
-                    print("After processing, I still have the following SRA Ids")
-                    print(sra_ids)
-                    # if sra_ids is not empty
-                    if sra_ids:
-                        f.write(f"{species}\t{','.join(sra_ids)}\n")
-                    else:
-                        no_rnaseq_anymore.append(species)
-        except IOError:
-            raise Exception(f"Error writing to file: {output.new_fastqdump_lst}")
-        for species in no_rnaseq_anymore:
-            print(f"Species {species} has no RNA-seq data anymore after filtering out bad libraries.")
-            # delete directory fastq for species
-            shutil.rmtree(f"data/species/{species}/fastq")
-            shutil.rmtree(f"data/species/{species}/hisat2")
-            touch("data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst")
         
 
 rule run_sam_to_bam:
     input:
-        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst"
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
+        remove_bad_done = "data/checkpoints_dataprep/{taxon}_B06_remove_bad_libraries.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B06_sam2bam.done"
     params:
@@ -493,7 +453,7 @@ rule run_merge_bam:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        log="data/checkpoints_dataprep/{params.taxon}_B10_samtools_sort_single.log"
+        log="data/checkpoints_dataprep/{params.taxon}_B10_samtools_merge.log"
         echo "" > $log
         readarray -t lines < <(cat {input.fastqdump_lst})
         for line in "${{lines[@]}}"; do
@@ -503,7 +463,7 @@ rule run_merge_bam:
             # count number of files matching the pattern data/species/$species/hisat2/*.sorted.bam, excluding file data/species/$species/hisat2/${{species}}.sorted.bam
             num_files=$(ls -1 data/species/$species/hisat2/*.sorted.bam | grep -v data/species/$species/hisat2/${{species}}.sorted.bam | wc -l)
             # merge all bam files of the same species with samtools merge 
-            if [ $num_files -gt 0 ] && [ ! -f "data/species/$species/hisat2/${{species}}.bam" ]; then
+            if [ $num_files -gt 1 ] && [ ! -f "data/species/$species/hisat2/${{species}}.bam" ]; then
                 echo "samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam" &>> $log
                 samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.bam data/species/$species/hisat2/*.sorted.bam &>> $log
             elif [ $numfiles -eq 1 ] && [ ! -f "data/species/$species/hisat2/${{species}}.bam" ] ; then
