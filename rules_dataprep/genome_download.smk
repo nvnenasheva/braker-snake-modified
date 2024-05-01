@@ -466,3 +466,36 @@ rule shorten_genomic_fasta_headers:
                 done_handle.write("done")
         except IOError:
             raise Exception(f"Error writing to file: {output.done}")
+
+
+# to be honest, this should have been taken care of in the downloads commands
+# but I only remembered to implement it later, and I do not want to rerun the entire download
+# once more...
+rule delete_ncbi_readme:
+    input:
+        genomic_download = "data/checkpoints_dataprep/{taxon}_A04_download.done",
+        annotated_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
+        blank_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl",
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_A10_delete_ncbi_readme.done"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
+    run:
+        # get all README files for a taxon
+        df_anno = pd.read_csv(input.annotated_tbl_path, sep="\t", usecols=['species']) # here also proteins
+        df_blank = pd.read_csv(input.blank_tbl_path, sep="\t", usecols=['species'])
+        # concatenate the species of df_anno to df_blank
+        df = pd.concat([df_anno, df_blank])
+        genome_files = [f"data/species/{species.replace(' ', '_')}/README.md" for species in df_blank['species']]
+        for genome_file in genome_files:
+            # if file exists
+            if os.path.exists(genome_file):
+                os.remove(genome_file)
+        # create checkpoint file
+        try:
+            with open(output.done, 'w') as done_handle:
+                done_handle.write("done")
+        except IOError:
+            raise Exception(f"Error writing to file: {output.done}")
