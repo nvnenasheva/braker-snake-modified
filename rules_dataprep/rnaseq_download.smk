@@ -247,7 +247,7 @@ rule remove_bad_libraries:
                         alignment_rate_float = float(alignment_rate.group(1))
                     else:
                         alignment_rate_float = None
-                    print("Alignment rate float is " + str(alignment_rate_float)
+                    print("Alignment rate float is " + str(alignment_rate_float))
                     # we must assume to have some metagenomic libraries, and they may have pretty bad but still useful reads,
                     # only remove the really bad ones, 20% is an arbitrary threshold for this
                     if alignment_rate_float is not None and alignment_rate_float < params.mapping_threshold:
