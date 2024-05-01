@@ -23,9 +23,6 @@ __author__ = "Katharina J. Hoff, Stepan Saenko, Clara Pitzschel"
 import configparser
 import pandas as pd
 from pathlib import Path
-import json
-import re
-import glob
 from snakemake.io import expand
 
 # Load and parse the config file
@@ -48,7 +45,9 @@ if not Path(checkptdir).exists():
     Path(checkptdir).mkdir(parents=True, exist_ok=True)
 
 # Include other rule files (assuming they define their own targets without using wildcards inappropriately)
+include: "rules_annotation/masking.smk"
 include: "rules_annotation/braker.smk"
+# include: "rules_annotation/busco.smk" <- implement!
 
 # Main rule to process each taxon
 rule all:
