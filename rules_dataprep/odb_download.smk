@@ -11,10 +11,12 @@ rule download_orthodb_partitions:
         special_url="https://bioinf.uni-greifswald.de/bioinf/partitioned_odb11/Viridiplantae.fa.gz"
     shell:
         """
-        mkdir -p {params.orthodb_path}  # Ensure the directory exists
+        # check if directory exists
+        if [ ! -d {params.orthodb_path} ]; then
+            mkdir -p {params.orthodb_path}
+        fi
         # Download the main partition
         curl -o {params.orthodb_path}/{wildcards.odb_partition}.fa.gz {params.url}
-        
         # Check if the partition is stramenopiles and handle accordingly
         if [ "{wildcards.odb_partition}" = "Stramenopiles" ]; then
             # Download the Viridiplantae partition

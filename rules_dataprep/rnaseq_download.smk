@@ -465,7 +465,8 @@ rule run_merge_bam:
                 echo "samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam" &>> $log
                 samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.bam data/species/$species/hisat2/*.sorted.bam &>> $log
             elif [ $numfiles -eq 1 ] && [ ! -f "data/species/$species/hisat2/${{species}}.bam" ] ; then
-                cp data/species/$species/hisat2/*.sorted.bam data/species/$species/hisat2/${{species}}.bam
+                echo "cp data/species/$species/hisat2/*.sorted.bam data/species/$species/hisat2/${{species}}.bam" &>> $log
+                cp data/species/$species/hisat2/*.sorted.bam data/species/$species/hisat2/${{species}}.bam &>> log
             else
                 echo "data/species/$species/hisat2/${{species}}.bam already exists" &>> $log
             fi
