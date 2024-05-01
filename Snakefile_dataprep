@@ -57,4 +57,5 @@ include: "rules_dataprep/rnaseq_download.smk"
 rule all:
     input:
         expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions),
-        expand("data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done", taxon=taxa_list)
+        expand("data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done", taxon=taxa_list),
+        expand("data/checkpoints_dataprep/{taxon}_A10_delete_ncbi_readme.done", taxon=taxa_list)
