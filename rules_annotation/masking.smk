@@ -1,8 +1,10 @@
 # We had orignally planned to use RED for masking but that has no data for our
 # clade at all, and we do not know how to generate the required data.
-# Therefore resorting to RepeatModeler2/RepeatMasker
-# Implementation is fragile because if anything goes wrong, we do not see the log
-# and the directory on /dev/shm is possibly not cleaned up.
+# It is really bad that we cannot change directories :-(
+# This rule requires a cleanup rule, later, to remove all the
+# weird species-specific files that are generated in the current directory.
+# These include folders with a prefix RM_ and files with a prefix {spid}.
+# We also want to move, not delete, the species specific repeat library files.
 rule mask_repeats:
     output:
         output = "data/checkpoints_annotate/{spid}_repeats.done"
@@ -18,15 +20,13 @@ rule mask_repeats:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"
-        wd=${{PWD}}
-        mkdir /dev/shm/dfam
-        #cp data/species/{params.spid}/genome/genome.fa /dev/shm/dfam/genome.fa
-        #cd /dev/shm/dfam
-        #BuildDatabase -name {params.spid} -pa {params.threads} genome.fa
-        #RepeatModeler -database {params.spid} -pa {params.threads} -LTRStruct
-        #RepeatMasker -pa {params.threads} -xsmall -lib {params.spid}-families.fa genome.fa
-        #cp genome.fa.masked data/species/{params.spid}/genome/genome.fa.masked
-        #cd $wd
-        rm -rf /dev/shm/dfam
+        log=data/checkpoints_annotate/{params.spid}_repeats.log
+        touch $log
+        echo "BuildDatabase -name {params.spid} -dir data/species/{params.spid}/genome" &>> $log
+        BuildDatabase -name {params.spid} -dir data/species/{params.spid}/genome &>> $log
+        echo "RepeatModeler -database {params.spid} -threads {params.threads} -LTRStruct" &>> $log
+        RepeatModeler -database {params.spid} -threads {params.threads} -LTRStruct &>> $log
+        echo "RepeatMasker -threads {params.threads} -xsmall -lib {params.spid}-families.fa -dir data/species/{params.spid}/genome/" &>> $log
+        RepeatMasker -threads {params.threads} -xsmall -lib {params.spid}-families.fa -dir data/species/{params.spid}/genome/ &>> $log
         touch {output}
         """

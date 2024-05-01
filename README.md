@@ -103,7 +103,7 @@ The first workflow, `Snakefile_dataprep` will run all expensive tasks for one ta
 
 ## Running
 
-Execute this only in a place where you have space for many GBs of data, output is written to a subdirectory data and will be very, very big!
+Execute this only in a place where you have space for many GBs of data, output is written to a subdirectory data and will be very, very big! Be patient, at the first execution, large containers are pulled. This takes between 20 minutes and 2 hours, before anything else happens. Best to start in screen.
 
 Run the pipeline (on login-a or login-b):
 
