@@ -40,9 +40,8 @@ rule retrieve_rnaseq_info_from_sra:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -f {output.fastqdump_lst}; \
+        python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -f {output.fastqdump_lst};
         """
-
 
 # Rule: download_fastq
 # Warning: 
@@ -137,6 +136,7 @@ rule run_download_fastq:
         echo "touch {output.done}" &>> $logfile
         touch {output.done}
         """
+
 
 rule run_hisat2_index:
     input:
@@ -240,16 +240,19 @@ rule remove_bad_libraries:
                         sra_id_string = sra_id.group(1)
                     else:
                         sra_id_string = None
+                    print("Processing " + sra_id_string)
                     # match the number before % 0.01% overall alignment rate
                     alignment_rate = re.search(r'([^%]+)% overall alignment rate', line)
                     if alignment_rate:
                         alignment_rate_float = float(alignment_rate.group(1))
                     else:
                         alignment_rate_float = None
+                    print("Alignment rate float is " + str(alignment_rate_float)
                     # we must assume to have some metagenomic libraries, and they may have pretty bad but still useful reads,
                     # only remove the really bad ones, 20% is an arbitrary threshold for this
                     if alignment_rate_float is not None and alignment_rate_float < params.mapping_threshold:
                         bad_sra.append(sra_id_string)
+                        print("I am appending SRA to bad list for " + sra_id_string)
         except IOError:
             raise Exception(f"Error reading from: {input.hisat2_log}")
         try:
@@ -266,6 +269,8 @@ rule remove_bad_libraries:
                     species, sra_ids = line.split('\t')
                     sra_ids = sra_ids.split(',')
                     sra_ids = [sra_id for sra_id in sra_ids if sra_id not in bad_sra]
+                    print("After processing, I still have the following SRA Ids")
+                    print(sra_ids)
                     # if sra_ids is not empty
                     if sra_ids:
                         f.write(f"{species}\t{','.join(sra_ids)}\n")
@@ -277,6 +282,7 @@ rule remove_bad_libraries:
             print(f"Species {species} has no RNA-seq data anymore after filtering out bad libraries.")
             # delete directory fastq for species
             shutil.rmtree(f"data/species/{species}/fastq")
+            shutil.rmtree(f"data/species/{species}/hisat2")
             touch("data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst")
         
 

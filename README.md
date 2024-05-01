@@ -14,7 +14,7 @@ Data prepration workflow:
 8. Align RNA-Seq libraries
 9. Discard bad libraries with now alignment rate
 10. Postprocess the aligned libraries to serve as input for BRAKER (merge, sort, index)
-11. Output a csv table per taxon that can be merged in order to launch the annotation workflow
+11. Output a csv table per taxon that can be merged over all taxa in order to launch the annotation workflow
 
 Annotation workflow
 
