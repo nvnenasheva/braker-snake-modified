@@ -18,11 +18,9 @@ Data prepration workflow:
 
 Annotation workflow
 
-1. Run BRAKER3 on the un-annotated genomes with RNA-Seq <- this will go into a separate Snakefile because it should launch one job per species, not per taxon, runtime issue otherwise
-2. Run BRAKER2 on the small un-annotated genomes without RNA-Seq
-3. Run BUSCO on all the protein data sets and compile a summary
-4. Run Galba on large genomes without RNA-Seq
-5. Run BUSCO on the annotation data sets and compile a summary
+1. Mask genomes with RepeatModeler/RepeatMasker (since RED does not have diatom/protist data), we must limit the number of parallel jobs to a few because this is very heavy on the i/o, very annoying that we cannot cd into /dev/shm. <- this is implemented but will cause a very big mess, needs a cleanup rule, not implemented yet.
+2. Run BRAKER depending on the input as BRAKER3 or BRAKER2 <- seems to work fine.
+3. Run BUSCO on all the protein data sets and compile a summary <- this is not implement yet
 
 (For Clara's project, we do not need other steps, but the pipeline could serve as template for further expansion in the future.)
 
