@@ -28,7 +28,7 @@ rule aggregate_results:
             with open(odb_file):
                 pass
         except IOError:
-            raise Exception("OrthoDB file not found for taxon: " + params.taxon)
+            raise Exception("OrthoDB file not found for taxon: " + odb_file)
         # read the species tables
         df_anno = pd.read_csv(input.annotated_tbl_path, sep="\t", usecols=['species']) # here also proteins
         df_blank = pd.read_csv(input.blank_tbl_path, sep="\t", usecols=['species'])

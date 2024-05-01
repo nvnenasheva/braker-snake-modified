@@ -31,7 +31,8 @@ localrules: all, \
             prepare_legacy_protein_download, execute_legacy_prot_download_commands, write_simplify_legacy_protein_headers_cmds, execute_fix_headers_commands, \
             shorten_genomic_fasta_headers, \
             download_orthodb_partitions, \
-            retrieve_rnaseq_info_from_sra, cleanup_sam_bam_unsorted_files, cleanup_sorted_bam_files, remove_bad_libraries
+            retrieve_rnaseq_info_from_sra, cleanup_sam_bam_unsorted_files, cleanup_sorted_bam_files, remove_bad_libraries, \
+            aggregate_results
             
 #, download_fastq
 
