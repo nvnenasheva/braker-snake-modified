@@ -252,7 +252,6 @@ rule run_hisat2:
         """
 
 # remove bad libraries
-# remove bad libraries
 rule remove_bad_libraries:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",

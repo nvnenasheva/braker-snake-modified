@@ -30,13 +30,14 @@ rule aggregate_results:
         except IOError:
             raise Exception("OrthoDB file not found for taxon: " + odb_file)
         # read the species tables
-        df_anno = pd.read_csv(input.annotated_tbl_path, sep="\t", usecols=['species']) # here also proteins
-        df_blank = pd.read_csv(input.blank_tbl_path, sep="\t", usecols=['species'])
+        df_anno = pd.read_csv(input.annotated_tbl_path, sep="\t")
+        df_blank = pd.read_csv(input.blank_tbl_path, sep="\t")
         # this df contains all species in a taxon
         df = pd.concat([df_anno, df_blank])
         # generate an empty dataframe called out_data with the columns species, taxon, accession, odb_file, rnaseq_file, genome_file, legacy_prot_file, annotation_file
         out_data = pd.DataFrame(columns=['species', 'taxon', 'accession', 'genome_file', 'odb_file', 'rnaseq_file', 'legacy_prot_file', 'annotation_file'])
         # iterate over the df
+        print(df)
         for index, row in df.iterrows():
             # get the species, replace spaces by underscores
             species = row['species'].replace(" ", "_")
@@ -67,7 +68,8 @@ rule aggregate_results:
             if os.path.isfile(annotation_file_path):
                 annotation_file = annotation_file_path
             # append the data to the out_data dataframe
-            out_data = out_data.append({'species': species, 'taxon': params.taxon, 'accession': accession, 'genome_file': genome_file, 'odb_file': odb_file, 'rnaseq_file': rnaseq_file, 'legacy_prot_file': legacy_prot_file, 'annotation_file': annotation_file}, ignore_index=True)
+            new_row = pd.DataFrame([{'species': species, 'taxon': params.taxon, 'accession': accession, 'genome_file': genome_file, 'odb_file': odb_file, 'rnaseq_file': rnaseq_file, 'legacy_prot_file': legacy_prot_file, 'annotation_file': annotation_file}])
+            out_data = pd.concat([out_data, new_row], ignore_index=True)
         # write the out_data dataframe to a csv file
         out_data.to_csv(output.table, index=False)
             
