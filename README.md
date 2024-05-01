@@ -111,7 +111,7 @@ Run the pipeline (on login-a or login-b):
 mamba activate snakemake
 module load singularity
 #cd braker-snake
-snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer
+snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer --keep-going
 ```
 
 The pipeline automatically submits some tasks via SLURM.
@@ -121,7 +121,7 @@ After data aggregation, you have to manually add a suitable busco_lineage to the
 Testing the rudimentary annotation pipeline:
 
 ```
-snakemake -s Snakefile_annotate --use-apptainer
+snakemake -s Snakefile_annotate --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer --keep-going
 ```
 
 ### Known issues

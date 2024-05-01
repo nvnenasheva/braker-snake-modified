@@ -18,11 +18,9 @@ df = pd.read_csv(args.csv)
 
 # find the row where column "species" has the value of args.species
 row = df.loc[df['species'] == args.species]
-print(row)
 cmd = ""
 # if annotation_file is empty
 if pd.isna(row['annotation_file'].values[0]):
-    "I am in the building phase"
     cmd += 'braker.pl --genome=' + row['genome_file'].values[0] + ' '
     cmd += '--prot_seq=' + row['odb_file'].values[0]
     # if legacy_prot_file is not empty
@@ -34,6 +32,10 @@ if pd.isna(row['annotation_file'].values[0]):
     cmd += ' --busco_lineage=' + row['busco_lineage'].values[0]
     cmd += ' --workingdir=' + args.workingdir
     cmd += ' --threads=' + str(args.threads)
+    # generate a random string of 6 characters to ensure if we need to run repeatedly that the species hopefully does not exist, yet
+    random_string = os.urandom(6).hex()
+    aug_species = args.species + '_' + random_string
+    cmd += ' --species=' + aug_species
     cmd += ' &> ' + args.logfile
 
 # write command to output file
