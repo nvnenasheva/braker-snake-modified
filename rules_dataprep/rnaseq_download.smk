@@ -455,8 +455,10 @@ rule cleanup_sam_bam_unsorted_files:
             modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
             species=$(echo "$modified_line" | cut -f1)
             sra_ids=$(echo "$modified_line" | cut -f2)
+            echo "Processing species $species" &>> $log
             IFS=',' read -r -a sra_array <<< "$sra_ids"
             for sra_id in "${{sra_array[@]}}"; do
+                echo "Processing SRA ID $sra_id" &>> $log
                 if [ -f data/species/$species/hisat2/${{sra_id}}.sam ]; then
                     echo "rm data/species/$species/hisat2/${{sra_id}}.sam" &>> $log
                     rm data/species/$species/hisat2/${{sra_id}}.sam &>> $log
@@ -510,18 +512,20 @@ rule run_merge_bam:
             modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
             species=$(echo "$modified_line" | cut -f1)
             echo "Processing species $species" &>> $log
-            # count number of files matching the pattern data/species/$species/hisat2/*.sorted.bam, excluding file data/species/$species/hisat2/${{species}}.sorted.bam
-            num_files=$(ls -1 data/species/$species/hisat2/*.sorted.bam | grep -v data/species/$species/hisat2/${{species}}.sorted.bam | wc -l)
+            # count number of files matching the pattern data/species/$species/hisat2/*.sorted.bam, excluding file data/species/$species/hisat2/$species.sorted.bam
+            num_files=$(ls -1 data/species/$species/hisat2/*.sorted.bam | grep -v data/species/$species/hisat2/$species.sorted.bam | wc -l)
             echo "Number of files is $num_files" &>> $log
             # merge all bam files of the same species with samtools merge 
-            if [ $num_files -gt 1 ] && [ ! -f "data/species/$species/hisat2/${{species}}.bam" ]; then
-                echo "samtools merge --threads {params.threads} -o data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam" &>> $log
-                samtools merge --threads {params.threads} -o data/species/$species/hisat2/${{species}}.bam data/species/$species/hisat2/*.sorted.bam &>> $log
-            elif [ $numfiles -eq 1 ] && [ ! -f "data/species/$species/hisat2/${{species}}.bam" ] ; then
-                echo "cp data/species/$species/hisat2/*.sorted.bam data/species/$species/hisat2/${{species}}.bam" &>> $log
-                cp data/species/$species/hisat2/*.sorted.bam data/species/$species/hisat2/${{species}}.bam &>> log
+            if [ $num_files -gt 1 ] && [ ! -f "data/species/$species/hisat2/$species.bam" ]; then
+                echo "samtools merge --threads {params.threads} -o data/species/$species/hisat2/$species.sorted.bam data/species/$species/hisat2/*.sorted.bam" &>> $log
+                samtools merge --threads {params.threads} -o data/species/$species/hisat2/$species.bam data/species/$species/hisat2/*.sorted.bam &>> $log
+            elif [ $num_files -eq 1 ] && [ ! -f "data/species/$species/hisat2/$species.bam" ] ; then
+                # get the actual file name from wild card expansion
+                filename=$(echo data/species/$species/hisat2/*.sorted.bam)
+                echo "mv $filename data/species/$species/hisat2/$species.bam" &>> $log
+                mv $filename data/species/$species/hisat2/$species.bam &>> log
             else
-                echo "data/species/$species/hisat2/${{species}}.bam already exists" &>> $log
+                echo "data/species/$species/hisat2/$species.bam already exists" &>> $log
             fi
         done
         touch {output.done}
