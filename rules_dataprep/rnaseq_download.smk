@@ -135,16 +135,11 @@ rule run_download_fastq:
         while IFS=$'\\t' read -r species sra_ids; do
             echo "$PWD" &>> $logfile
             species_fixed=$(echo "$species" | sed 's/ /_/g')  # Replace space with underscore
-            echo "cd data/species/$species_fixed" &>> $logfile
-            cd data/species/$species_fixed
             # if the directory fastq does not exist, yet
-            if [ ! -d "fastq" ]; then
-                echo "mkdir fastq" &>> $logfile
-                mkdir fastq  # Create a directory for the species
+            if [ ! -d "data/species/$species_fixed/fastq" ]; then
+                echo "mkdir -p data/species/$species_fixed/fastq" &>> $logfile
+                mkdir -p data/species/$species_fixed/fastq  # Create a directory for the species
             fi
-            echo "cd ../../../" &>> $logfile
-            cd ../../../ 
-            echo "$PWD" &>> $logfile
             # Convert comma-separated string to array
             IFS=',' read -ra ids <<< "$sra_ids"
 
