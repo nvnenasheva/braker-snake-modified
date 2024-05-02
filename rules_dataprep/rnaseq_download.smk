@@ -168,6 +168,9 @@ rule run_download_fastq:
         """
 
 
+# Rule 'run_hisat2_index' prepares a HISAT2 index for RNA-Seq data by leveraging the hisat2-build command. 
+# It ensures that all required inputs are available including the RNA-Seq data list, signal files indicating 
+# successful download and genome preparation. Outputs a completion flag upon successfully building the index.
 rule run_hisat2_index:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
@@ -206,6 +209,11 @@ rule run_hisat2_index:
         touch {output.done}
         """
 
+
+# Rule 'run_hisat2' performs RNA sequencing alignment using HISAT2. It processes each RNA-Seq dataset listed
+# in the fastqdump list, provided the HISAT2 indexing has been completed. The rule generates alignment files (.sam) 
+# for each dataset and logs the process details. It operates within a specified Singularity container to ensure
+# compatibility and consistency of the software environment.
 rule run_hisat2:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
@@ -251,7 +259,14 @@ rule run_hisat2:
         touch {output.done}
         """
 
-# remove bad libraries
+# During identification of RNA-Seq libraries from SRA, we do not exclude co-culture libraries
+# because in taxa, such as diatoms, most data are obtained from such libraries. However, we
+# thereby also download libraries that are not mRNA libraries. To exclude these libraries, we
+# use the hisat2 log file to identify libraries with less than a certain percentage of reads
+# that are aligned. We then remove these libraries from the list of libraries to process.
+# ToDo: This possibly leaves dangling large sam file that need to be removed, later!
+# They are not removed, here, to avoid repeated download & alignment in case the pipeline needs 
+# to be relaunched.
 rule remove_bad_libraries:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
@@ -273,6 +288,10 @@ rule remove_bad_libraries:
         touch {output.done}
         '''
 
+
+# Rule 'run_sam_to_bam' converts SAM files to BAM format using Samtools, optimizing for reduced file size and
+# enhanced processing speeds. It only processes samples that have completed the 'remove_bad_libraries' step, ensuring 
+# only quality data is transformed. The rule generates a log of the conversion process and a signal file upon completion.
 rule run_sam_to_bam:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
@@ -314,6 +333,13 @@ rule run_sam_to_bam:
         touch {output.done}
         """
 
+
+# Rule 'run_samtools_sort_single' sorts BAM files by genomic coordinates using Samtools, 
+# which facilitates more efficient downstream analyses such as feature counting. This 
+# rule acts upon BAM files generated in prior steps once they are confirmed complete 
+# by the 'sam2bam.done' checkpoint. It logs the sorting process and produces a sorted 
+# BAM for each RNA-Seq sample, enhancing the organization and accessibility of sequence 
+#data.
 rule run_samtools_sort_single:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
@@ -355,6 +381,13 @@ rule run_samtools_sort_single:
         touch {output.done}
         """
 
+
+# Rule 'run_samtools_index_single' indexes sorted BAM files using Samtools, creating 
+# an index file for each. This indexing step is crucial for efficient retrieval of 
+# data during downstream genomic analyses such as read depth calculations or localized 
+# querying. The rule triggers only after the sorting of BAM files is confirmed complete, 
+# ensuring a streamlined workflow. Outputs include a completion signal for the indexing 
+# process.
 rule run_samtools_index_single:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
@@ -392,6 +425,14 @@ rule run_samtools_index_single:
         touch {output.done}
         """
 
+
+# Rule 'cleanup_sam_bam_unsorted_files' is responsible for cleaning up intermediate 
+# SAM and unsorted BAM files after indexing is completed to conserve disk space. 
+# This rule is triggered only after the successful completion of BAM indexing, 
+# ensuring that only redundant files are removed. The process is logged for audit
+# purposes, and a completion file is generated once all specified deletions are executed. 
+# This cleanup step helps maintain an organized file system and reduces storage overhead,
+# essential in large-scale sequencing projects.
 rule cleanup_sam_bam_unsorted_files:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
@@ -416,13 +457,17 @@ rule cleanup_sam_bam_unsorted_files:
             sra_ids=$(echo "$modified_line" | cut -f2)
             IFS=',' read -r -a sra_array <<< "$sra_ids"
             for sra_id in "${{sra_array[@]}}"; do
-                if [ -f data/species/$species/hisat2/${{sra_id}}.sam ] && [ data/species/$species/hisat2/${{sra_id}}.bam ]; then
+                if [ -f data/species/$species/hisat2/${{sra_id}}.sam ]; then
                     echo "rm data/species/$species/hisat2/${{sra_id}}.sam" &>> $log
                     rm data/species/$species/hisat2/${{sra_id}}.sam &>> $log
+                else
+                    echo "data/species/$species/hisat2/${{sra_id}}.sam does not exist" &>> $log
+                fi
+                if [ -f data/species/$species/hisat2/${{sra_id}}.bam ]; then
                     echo "rm data/species/$species/hisat2/${{sra_id}}.bam" &>> $log
                     rm data/species/$species/hisat2/${{sra_id}}.bam &>> $log
                 else
-                    echo "data/species/$species/hisat2/${{sra_id}}.sam or data/species/$species/hisat2/${{sra_id}}.bam does not exist" &>> $log
+                    echo "data/species/$species/hisat2/${{sra_id}}.bam does not exist" &>> $log
                 fi
             done
         done
@@ -430,6 +475,13 @@ rule cleanup_sam_bam_unsorted_files:
         """
 
 
+# Rule 'run_merge_bam' is designed to consolidate sorted BAM files for each species 
+# into a single BAM file, facilitating streamlined downstream analyses. This 
+# merging process is triggered only after all unsorted and intermediate BAM and 
+# SAM files have been cleaned up. The rule logs detailed processing steps and 
+# conditions, such as the number of files merged and any copying actions for 
+# species with a single sorted BAM file. It utilizes multi-threading to optimize 
+# the merging process.
 rule run_merge_bam:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
@@ -475,6 +527,15 @@ rule run_merge_bam:
         touch {output.done}
         """
 
+
+# Rule 'cleanup_sorted_bam_files' handles the removal of individual sorted BAM files
+# once they have been successfully merged into a single BAM file per species. This 
+# step is critical for managing storage efficiently, especially in large-scale genomic
+# projects where data volume can become unwieldy. The rule executes only after the 
+# merging process is verified complete, ensuring that no data necessary for further
+# analysis is inadvertently lost. It logs each deletion step for traceability and 
+# issues a completion signal once all specified files are removed. This cleanup is 
+# essential for maintaining an organized data structure and minimizing disk space usage.
 rule cleanup_sorted_bam_files:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
@@ -511,6 +572,15 @@ rule cleanup_sorted_bam_files:
         touch {output.done}
         """
 
+# Rule 'run_sort_merged_bam' further processes the merged BAM files by sorting 
+# them again using Samtools to ensure that they are optimized for downstream 
+# genomic analyses. This step is crucial for the efficient handling of large BAM 
+# files, particularly in preparation for tasks such as variant calling or 
+# statistical analyses. The rule activates only after the successful completion 
+# of the BAM merging process, guaranteeing that all necessary preliminary 
+# steps have been fulfilled. It employs significant computational resources 
+# to handle the demands of sorting large genomic datasets and logs each operation 
+# for tracking and debugging purposes.
 rule run_sort_merged_bam:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
