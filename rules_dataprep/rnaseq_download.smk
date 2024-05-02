@@ -626,7 +626,8 @@ rule run_sort_merged_bam:
 
 rule cleanup_rnaseq:
     input:
-        sort_merged = "data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done"
+        sort_merged = "data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done",
+        fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B13_cleanup_rnaseq.done"
     params:
