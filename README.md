@@ -56,9 +56,9 @@ Bash dependencies (are usually available on a cluster): singularity, curl, zcat,
 
 ## Configuration
 
-### config.ini
+### config_dataprep.ini & config_annotate.ini
 
-Contents of the config.ini file are important, adjust before running! Do not set the orthodb_path into your home directory, output is huge!
+Contents of the config files are important, adjust before running! Only execute worklows in a place where you have unlimited space. The output is huge.
 
 ### ~/profile/apptainer/config.v8+.yaml
 
@@ -87,13 +87,22 @@ echo '/repository/user/cache-disabled = "true"' >> ~/.ncbi/user-settings.mkfg
 
 ## Input data
 
-The input data is expected to be in the following format:
+The input data for dataprep is expected to be in the following format:
 
 ```
-<taxon> <odb_partition>
+<taxon> <odb_partition> <busco_lineage>
 ```
 
 You find a small example in input.csv.  You may want to modify input.csv
+
+The input data for annotate is expected to be in the following format:
+
+```
+species,taxon,accession,genome_file,odb_file,rnaseq_file,legacy_prot_file,annotation_file,busco_lineage
+Epithemia_pelagica,Rhopalodiales,GCA_946965045.2,data/species/Epithemia_pelagica/genome/genome.fa,data/orthodb/Stramenopiles.fa,,,,stramenopiles_odb10
+```
+
+You find a small exampel in the species.csv. You can build one large input file for all taxa after dataprep has finished. Each of the taxa produces a compatible csv file.
 
 **Warning:** specifying a taxon that includes another taxon in the input is dangerous! We are not checking for species duplicates across taxa. Don't do this!
 
@@ -101,7 +110,7 @@ The first workflow, `Snakefile_dataprep` will run all expensive tasks for one ta
 
 ## Running
 
-Execute this only in a place where you have space for many GBs of data, output is written to a subdirectory data and will be very, very big! Be patient, at the first execution, large containers are pulled. This takes between 20 minutes and 2 hours, before anything else happens. Best to start in screen.
+Execute this only in a place where you have space for many GBs of data, output is written to a subdirectory data and will be very, very big! Be patient, at the first execution, large containers are pulled. This takes between 20 minutes and 2 hours, before anything else happens. Best to start in screen. The pipeline automatically submits some tasks via SLURM.
 
 Run the pipeline (on login-a or login-b):
 
@@ -112,11 +121,7 @@ module load singularity
 snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer --keep-going
 ```
 
-The pipeline automatically submits some tasks via SLURM.
-
-After data aggregation, you have to manually add a suitable busco_lineage to the csv file for every species. Annoying... but don't forget that.
-
-Testing the rudimentary annotation pipeline:
+Testing the annotation pipeline:
 
 ```
 snakemake -s Snakefile_annotate --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer --keep-going
