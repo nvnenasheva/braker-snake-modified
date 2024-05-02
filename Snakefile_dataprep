@@ -31,14 +31,14 @@ localrules: all, \
             prepare_legacy_protein_download, execute_legacy_prot_download_commands, write_simplify_legacy_protein_headers_cmds, execute_fix_headers_commands, \
             shorten_genomic_fasta_headers, \
             download_orthodb_partitions, \
-            retrieve_rnaseq_info_from_sra, cleanup_sam_bam_unsorted_files, cleanup_sorted_bam_files, remove_bad_libraries, \
+            retrieve_rnaseq_info_from_sra, cleanup_sam_bam_unsorted_files, cleanup_sorted_bam_files, remove_bad_libraries, cleanup_rnaseq, \
             aggregate_results
             
 #, download_fastq
 
 # Read the input CSV file to get taxon and odb partition names
 # Assuming the CSV file is tab-separated
-data = pd.read_csv(input_csv, header=None, sep=' ', names=['taxa', 'odb_partition'])
+data = pd.read_csv(input_csv, header=None, sep=' ', names=['taxa', 'odb_partition', 'busco_db'])
 
 # Create separate lists for taxa and unique odb partitions
 taxa_list = data['taxa'].tolist()

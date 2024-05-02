@@ -4,7 +4,7 @@
 # after ODB download has finished.
 rule aggregate_results:
     input: 
-        rnaseq_done = "data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done",
+        rnaseq_done = "data/checkpoints_dataprep/{taxon}_B13_cleanup_rnaseq.done",
         genome_done = "data/checkpoints_dataprep/{taxon}_A10_delete_ncbi_readme.done",
         annotated_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
         blank_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
@@ -18,7 +18,9 @@ rule aggregate_results:
         taxon="[^_]+"
     run:
         # read the input_csv to get the odb partition for each taxon
-        in_csv = pd.read_csv(params.input_csv, header=None, sep=' ', names=['taxa', 'odb_partition'])
+        in_csv = pd.read_csv(params.input_csv, header=None, sep=' ', names=['taxa', 'odb_partition', 'busco_db'])
+        # store busco_db
+        busco_db = in_csv[in_csv['taxa'] == params.taxon]['busco_db'].values[0]
         # find out what odb parition applies to the currently given taxon
         odb_partition = in_csv[in_csv['taxa'] == params.taxon]['odb_partition'].values[0]
         # build path to odb file, they sit in data/params.odbdir/odb_partition.fa
@@ -35,7 +37,7 @@ rule aggregate_results:
         # this df contains all species in a taxon
         df = pd.concat([df_anno, df_blank])
         # generate an empty dataframe called out_data with the columns species, taxon, accession, odb_file, rnaseq_file, genome_file, legacy_prot_file, annotation_file
-        out_data = pd.DataFrame(columns=['species', 'taxon', 'accession', 'genome_file', 'odb_file', 'rnaseq_file', 'legacy_prot_file', 'annotation_file'])
+        out_data = pd.DataFrame(columns=['species', 'taxon', 'accession', 'genome_file', 'odb_file', 'rnaseq_file', 'legacy_prot_file', 'annotation_file', 'busco_db'])
         # iterate over the df
         print(df)
         for index, row in df.iterrows():
@@ -68,7 +70,7 @@ rule aggregate_results:
             if os.path.isfile(annotation_file_path):
                 annotation_file = annotation_file_path
             # append the data to the out_data dataframe
-            new_row = pd.DataFrame([{'species': species, 'taxon': params.taxon, 'accession': accession, 'genome_file': genome_file, 'odb_file': odb_file, 'rnaseq_file': rnaseq_file, 'legacy_prot_file': legacy_prot_file, 'annotation_file': annotation_file}])
+            new_row = pd.DataFrame([{'species': species, 'taxon': params.taxon, 'accession': accession, 'genome_file': genome_file, 'odb_file': odb_file, 'rnaseq_file': rnaseq_file, 'legacy_prot_file': legacy_prot_file, 'annotation_file': annotation_file, 'busco_db': busco_db}])
             out_data = pd.concat([out_data, new_row], ignore_index=True)
         # write the out_data dataframe to a csv file
         out_data.to_csv(output.table, index=False)

@@ -589,7 +589,7 @@ rule cleanup_sorted_bam_files:
 rule run_sort_merged_bam:
     input:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
-        genome_done = "data/checkpoints_dataprep/{taxon}_B10_merge_bam.done"
+        merge_done = "data/checkpoints_dataprep/{taxon}_B10_merge_bam.done"
     output:
         done = "data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done"
     params:
@@ -620,6 +620,40 @@ rule run_sort_merged_bam:
             else
                 echo "data/species/$species/hisat2/${{species}}.sorted.bam already exists" &>> $log
             fi
+        done
+        touch {output.done}
+        """
+
+rule cleanup_rnaseq:
+    input:
+        sort_merged = "data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_B13_cleanup_rnaseq.done"
+    params:
+        taxon=lambda wildcards: wildcards.taxon,
+        threads = config['SLURM_ARGS']['cpus_per_task']
+    wildcard_constraints:
+        taxon="[^_]+"
+    shell:
+        """
+        log="data/checkpoints_dataprep/{params.taxon}_B13_cleanup.log"
+        echo "" > $log
+        readarray -t lines < <(cat {input.fastqdump_lst})
+        for line in "${{lines[@]}}"; do
+            # Replace the first space with an underscore in the species name part of the line
+            modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
+            species=$(echo "$modified_line" | cut -f1)
+            if [ -d "data/species/$species/fastq"]; then
+                echo "rm -r data/species/$species/fastq" &>> $log
+                rm -r data/species/$species/fastq &>> $log
+            fi
+            # find all sam files in data/species/$species/hisat2 and store them in an array
+            readarray -t sam_files < <(find data/species/$species/hisat2 -name "*.sam")
+            for sam_file in "${{sam_files[@]}}"; do
+                echo "rm $sam_file" &>> $log
+                rm $sam_file &>> $log
+            done
+            # implement removal of hisat2 index!
         done
         touch {output.done}
         """
