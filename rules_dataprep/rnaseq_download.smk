@@ -140,6 +140,10 @@ rule run_download_fastq:
                 echo "mkdir -p data/species/$species_fixed/fastq" &>> $logfile
                 mkdir -p data/species/$species_fixed/fastq  # Create a directory for the species
             fi
+            if [ ! -d "data/species/$species_fixed/sra" ]; then
+                echo "mkdir -p data/species/$species_fixed/sra" &>> $logfile
+                mkdir -p data/species/$species_fixed/sra  # Create a directory for the species
+            fi
             # Convert comma-separated string to array
             IFS=',' read -ra ids <<< "$sra_ids"
 
@@ -453,12 +457,14 @@ rule run_merge_bam:
             # Replace the first space with an underscore in the species name part of the line
             modified_line=$(echo "$line" | sed 's/\\([^\\t]*\\) /\\1_/')
             species=$(echo "$modified_line" | cut -f1)
+            echo "Processing species $species" &>> $log
             # count number of files matching the pattern data/species/$species/hisat2/*.sorted.bam, excluding file data/species/$species/hisat2/${{species}}.sorted.bam
             num_files=$(ls -1 data/species/$species/hisat2/*.sorted.bam | grep -v data/species/$species/hisat2/${{species}}.sorted.bam | wc -l)
+            echo "Number of files is $num_files" &>> $log
             # merge all bam files of the same species with samtools merge 
             if [ $num_files -gt 1 ] && [ ! -f "data/species/$species/hisat2/${{species}}.bam" ]; then
-                echo "samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam" &>> $log
-                samtools merge --threads {params.threads} data/species/$species/hisat2/${{species}}.bam data/species/$species/hisat2/*.sorted.bam &>> $log
+                echo "samtools merge --threads {params.threads} -o data/species/$species/hisat2/${{species}}.sorted.bam data/species/$species/hisat2/*.sorted.bam" &>> $log
+                samtools merge --threads {params.threads} -o data/species/$species/hisat2/${{species}}.bam data/species/$species/hisat2/*.sorted.bam &>> $log
             elif [ $numfiles -eq 1 ] && [ ! -f "data/species/$species/hisat2/${{species}}.bam" ] ; then
                 echo "cp data/species/$species/hisat2/*.sorted.bam data/species/$species/hisat2/${{species}}.bam" &>> $log
                 cp data/species/$species/hisat2/*.sorted.bam data/species/$species/hisat2/${{species}}.bam &>> log
