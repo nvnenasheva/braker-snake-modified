@@ -32,7 +32,8 @@ rule retrieve_rnaseq_info_from_sra:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
     params:
         taxon = lambda wildcards: wildcards.taxon,
-        email = config['ESEARCH']['email']
+        email = config['ESEARCH']['email'],
+        nlibs = int(config['FASTERQDUMP']['number_of_libraries'])
     wildcard_constraints:
         taxon="[^_]+"
     singularity:
@@ -40,7 +41,7 @@ rule retrieve_rnaseq_info_from_sra:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -f {output.fastqdump_lst};
+        python3 {input.download_script} -e {params.email} -t {input.unannotated_species} -f {output.fastqdump_lst} -n {params.nlibs};
         """
 
 # Rule: download_fastq

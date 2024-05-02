@@ -21,7 +21,7 @@ from snakemake.io import expand
 
 # Load and parse the config file
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read('config_dataprep.ini')
 input_csv = config['INPUT']['input_csv']
 
 # define local rules that are not submitted via SLURM

@@ -108,7 +108,7 @@ if __name__ == "__main__":
     parser.add_argument('-e', '--email', required=True, help='Email address for NCBI access')
     parser.add_argument('-t', '--species_tables', required=True, help='File path to tab separated file that contains species information, format specific to braker-snake')
     parser.add_argument('-f', '--fastqdump_out_list', required=True, help='List of species ')
-    parser.add_argument('-n', '--n_threshold', required=False, default=2, help='Threshold for number of records to be considered for further processing with VARUS (default: 6), those with fewer records will be output into a separate file for direct fastq-dump processing')
+    parser.add_argument('-n', '--n_threshold', required=False, default=6, help='Threshold for number of records to be considered for further processing with VARUS (default: 6), those with fewer records will be output into a separate file for direct fastq-dump processing')
 
     args = parser.parse_args()
     main(args)

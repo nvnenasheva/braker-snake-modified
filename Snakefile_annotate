@@ -27,7 +27,7 @@ from snakemake.io import expand
 
 # Load and parse the config file
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read('config_annotate.ini')
 species_csv = config['INPUT']['species_csv'] # is an output of the data aggregation workflow
 
 # read the input file to create index
