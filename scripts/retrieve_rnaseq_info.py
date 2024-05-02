@@ -78,8 +78,8 @@ def main(args):
         random.shuffle(accessions_list)
         ## if we want to return to VARUS, we need to delete the next two lines
         # store only the first n accessions in accessions_list
-        if len(accessions_list) > args.n_threshold:
-            accessions_list = accessions_list[:args.n_threshold]
+        if len(accessions_list) > int(args.n_threshold):
+            accessions_list = accessions_list[:int(args.n_threshold)]
         all_data[species] = {'nRecords': nRecords, 'accessions': accessions_list}
 
 
