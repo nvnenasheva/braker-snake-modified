@@ -5,7 +5,7 @@ Simple snakemake workflows for handling BRAKER on large data sets to prepare tra
 Data prepration workflow:
 
 1. Download the available assemblies for taxa from NCBI
-2. Prioritize in case of species duplications (first choice: annotated refseq, second choice: max N50)
+2. Prioritize in case of species duplications (first choice: reference genome, second choice: max N50)
 3. Separate into annotated and un-annotated genomes
 4. Download the respective data sets from NCBI datasets (either genome only, or genome, annotation, proteins)
 5. Download OrthoDB partitions
@@ -74,15 +74,6 @@ Add the following content to the file (adapt to your own working directory):
 ```
 use-singularity: True
 singularity-args: "\"--bind /home/hoffk83/git/braker-snake:/home/hoffk83/git/braker-snake --bind /home/hoffk83/ncbi:/home/hoffk83/ncbi\""
-```
-
-### ~/.ncbi/user-settings.mkfg
-
-This config with contents must be present to avoid huge caching files when VARUS runs fastq-dump:
-
-```
-mkdir -p ~/.ncbi
-echo '/repository/user/cache-disabled = "true"' >> ~/.ncbi/user-settings.mkfg
 ```
 
 ## Input data
