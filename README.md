@@ -103,19 +103,28 @@ The first workflow, `Snakefile_dataprep` will run all expensive tasks for one ta
 
 Execute this only in a place where you have space for many GBs of data, output is written to a subdirectory data and will be very, very big! Be patient, at the first execution, large containers are pulled. This takes between 20 minutes and 2 hours, before anything else happens. Best to start in screen. The pipeline automatically submits some tasks via SLURM.
 
-Run the pipeline (on login-a or login-b):
+Preparing to run either of the pipelines on login-a or login-b:
+
+```
+screen # enter screen before proceeding
+mamba activate snakemake
+module load singularity
+cd braker-snake
+```
+
+Run the data download and processing pipeline:
 
 ```
 mamba activate snakemake
 module load singularity
 #cd braker-snake
-snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer --keep-going
+snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer
 ```
 
 Testing the annotation pipeline:
 
 ```
-snakemake -s Snakefile_annotate --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer --keep-going
+snakemake -s Snakefile_annotate --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer
 ```
 
 ### Known issues
