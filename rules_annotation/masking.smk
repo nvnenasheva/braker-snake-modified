@@ -20,7 +20,7 @@ rule mask_repeats:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"
-	export OUTPUT_FOLDER={config['TARGET']['output_folder']}
+	export OUTPUT_FOLDER={{config['TARGET']['output_folder']}}
         log=data/checkpoints_annotate/{params.spid}_repeats.log
         touch $log
         echo "./run_masking.sh" &>> $log
