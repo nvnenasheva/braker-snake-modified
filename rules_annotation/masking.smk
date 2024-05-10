@@ -20,13 +20,10 @@ rule mask_repeats:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"
+	export OUTPUT_FOLDER={config['target']['output_folder']}
         log=data/checkpoints_annotate/{params.spid}_repeats.log
         touch $log
-        echo "BuildDatabase -name {params.spid} -dir data/species/{params.spid}/genome" &>> $log
-        BuildDatabase -name {params.spid} -dir data/species/{params.spid}/genome &>> $log
-        echo "RepeatModeler -database {params.spid} -threads {params.threads} -LTRStruct" &>> $log
-        RepeatModeler -database {params.spid} -threads {params.threads} -LTRStruct &>> $log
-        echo "RepeatMasker -threads {params.threads} -xsmall -lib {params.spid}-families.fa -dir data/species/{params.spid}/genome/" &>> $log
-        RepeatMasker -threads {params.threads} -xsmall -lib {params.spid}-families.fa -dir data/species/{params.spid}/genome/ &>> $log
+        echo "./run_masking.sh" &>> $log
+	./run_masking.sh
         touch {output}
         """
