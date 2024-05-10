@@ -7,7 +7,8 @@ rule aggregate_results:
         rnaseq_done = "data/checkpoints_dataprep/{taxon}_B13_cleanup_rnaseq.done",
         genome_done = "data/checkpoints_dataprep/{taxon}_A10_delete_ncbi_readme.done",
         annotated_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
-        blank_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
+        blank_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl",
+        annot_done = "data/checkpoints_dataprep/{taxon}_A13_gtf.done"
     output:
         table = "data/checkpoints_dataprep/{taxon}_C01_data.csv"
     params:
