@@ -25,6 +25,6 @@ rule mask_repeats:
         log=data/checkpoints_annotate/{params.spid}_repeats.log
         touch $log
         echo "$wd/rules_annotation/run_masking.sh" &>> $log
-	$wd/run_masking.sh
+	$wd/rules_annotation/run_masking.sh
         touch {output}
         """
