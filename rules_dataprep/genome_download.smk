@@ -499,3 +499,137 @@ rule delete_ncbi_readme:
                 done_handle.write("done")
         except IOError:
             raise Exception(f"Error writing to file: {output.done}")
+
+
+rule select_pseudo:
+    input:
+        download_done = "data/checkpoints_dataprep/{taxon}_A09_shorten_genomic_headers.done",
+        annotated_tbl = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_A11_select_pseudo.done"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
+    singularity:
+        "docker://teambraker/braker3:devel"
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"
+        logfile="data/checkpoints_dataprep/{wildcards.taxon}_A11_select_pseudo.log"
+        touch $logfile
+        declare -a species_list
+        while IFS=$'\t' read -r -a line; do
+            # Skip the header line
+            if [ "${line[0]}" == "accession" ]; then
+                continue
+            fi
+            # Extract species name and replace spaces with underscores
+            species="${line[1]// /_}"
+            # Append the modified species name to the array
+            species_list+=("$species")
+        done < {input.annotated_tbl}
+        for species in "${species_list[@]}"; do
+            echo "Processing species: $species" >> $logfile
+            echo "grep '^>' data/species/$species/genome/genome.fa > data/species/$species/annot/deflines" >> $logfile
+            grep '^>' data/species/$species/genome/genome.fa > data/species/$species/annot/deflines
+            echo "cat data/species/$species/annot/deflines | cut -f1 -d' ' | grep -v MT | cut -b2- > data/species/$species/annot/z" >> $logfile
+            cat data/species/$species/annot/deflines | cut -f1 -d' ' | grep -v MT | cut -b2- > data/species/$species/annot/z
+            echo "paste data/species/$species/annot/z data/species/$species/annot/z > data/species/$species/annot/list.tbl" >> $logfile
+            paste data/species/$species/annot/z data/species/$species/annot/z > data/species/$species/annot/list.tbl
+            echo "rm data/species/$species/annot/z data/species/$species/annot/deflines" >> $logfile
+            rm data/species/$species/annot/z data/species/$species/annot/deflines
+            echo "gff_to_gff_subset.pl --in data/species/$species/annot/annot.gff3 --out data/species/${species}/annot/tmp_annot.gff3 --list data/species/$species/annot/list.tbl --col 2 --v &> /dev/null" >> $logfile
+            gff_to_gff_subset.pl --in data/species/$species/annot/annot.gff3 --out data/species/${species}/annot/tmp_annot.gff3 --list data/species/$species/annot/list.tbl --col 2 --v &> /dev/null
+            echo 'echo "##gff-version 3" > data/species/$species/annot/annot.gff3' >> $logfile
+            echo "##gff-version 3" > data/species/$species/annot/annot.gff3
+            echo "Running probuild..." >> $logfile
+            probuild --stat_fasta --seq data/species/$species/genome/genome.fa | cut -f1,2 | tr -d '>' | grep -v '^$' | awk '{print "##sequence-region  " $1 "  1 " $2}' >> data/species/$species/annot/annot.gff3
+            cat data/species/$species/annot/tmp_annot.gff3 | grep -v "^#" >> data/species/$species/annot/annot.gff3
+            echo "rm data/species/$species/annot/tmp_annot.gff3" >> $logfile
+            rm data/species/$species/annot/tmp_annot.gff3
+            echo "gt gff3 -force -tidy -sort -retainids -checkids -o data/species/$species/annot/tmp_annot.gff3 data/species/$species/annot/annot.gff3
+            gt gff3 -force -tidy -sort -retainids -checkids -o data/species/$species/annot/tmp_annot.gff3 data/species/$species/annot/annot.gff3
+            echo "mv data/species/$species/annot/tmp_annot.gff3 data/species/$species/annot/annot.gff3" >> $logfile
+            mv data/species/$species/annot/tmp_annot.gff3 data/species/$species/annot/annot.gff3
+            echo "select_pseudo_from_nice_gff3.pl data/species/$species/annot/annot.gff3 data/species/$species/annot/pseudo.gff3" >> $logfile
+            select_pseudo_from_nice_gff3.pl data/species/$species/annot/annot.gff3 data/species/$species/annot/pseudo.gff3
+        done
+        touch {output.done}
+        """
+
+
+rule add_introns:
+    input:
+        download_done = "data/checkpoints_dataprep/{taxon}_A11_select_pseudo.done",
+        annotated_tbl = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_A12_add_introns.done"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
+    singularity:
+        "docker://quay.io/biocontainers/agat:1.0.0--pl5321hdfd78af_0"
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"
+        logfile="data/checkpoints_dataprep/{wildcards.taxon}_A12_add_introns.log"
+        touch $logfile
+        declare -a species_list
+        while IFS=$'\t' read -r -a line; do
+            # Skip the header line
+            if [ "${line[0]}" == "accession" ]; then
+                continue
+            fi
+            # Extract species name and replace spaces with underscores
+            species="${line[1]// /_}"
+            # Append the modified species name to the array
+            species_list+=("$species")
+        done < {input.annotated_tbl}
+        for species in "${species_list[@]}"; do
+            echo "Processing species: $species" >> $logfile
+            echo "agat_sp_add_introns.pl --gff data/species/$species/annot/annot.gff3 --out data/species/$species/annot/annot_tmp.gff3" >> $logfile
+            agat_sp_add_introns.pl --gff data/species/$species/annot/annot.gff3 --out data/species/$species/annot/annot_tmp.gff3 &>> $logfile
+        done
+        touch {output.done}
+        """
+
+
+rule gff3_to_gtf:
+    input:
+        download_done = "data/checkpoints_dataprep/{taxon}_A12_add_introns.done",
+        annotated_tbl = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_A13_gtf.done"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
+    singularity:
+        "docker://teambraker/braker3:devel"
+    shell:
+        """
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}"
+        logfile="data/checkpoints_dataprep/{wildcards.taxon}_A13_gtf.log"
+        touch $logfile
+        declare -a species_list
+        while IFS=$'\t' read -r -a line; do
+            # Skip the header line
+            if [ "${line[0]}" == "accession" ]; then
+                continue
+            fi
+            # Extract species name and replace spaces with underscores
+            species="${line[1]// /_}"
+            # Append the modified species name to the array
+            species_list+=("$species")
+        done < {input.annotated_tbl}
+        for species in "${species_list[@]}"; do
+            echo "Processing species: $species" >> $logfile
+            echo "gff3_to_gtf.pl data/species/$species/annot/annot_tmp.gff3 data/species/$species/annot/annot.gtf" >> $logfile
+            gff3_to_gtf.pl data/species/$species/annot/annot_tmp.gff3 data/species/$species/annot/annot.gtf &>> $logfile
+            echo "rm data/species/$species/annot/list.tbl data/species/$species/annot/annot.gff3 data/species/$species/annot/annot_tmp.gff3" >> $logfile
+            rm data/species/$species/annot/list.tbl data/species/$species/annot/annot.gff3 data/species/$species/annot/annot_tmp.gff3
+        done
+        touch {output.done}
+        """
