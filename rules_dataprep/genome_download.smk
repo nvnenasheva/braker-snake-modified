@@ -639,8 +639,3 @@ rule gff3_to_gtf:
         done
         touch {output.done}
         """
-
-'''
-
-                
-'''
