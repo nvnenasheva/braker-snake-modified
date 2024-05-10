@@ -26,5 +26,6 @@ rule mask_repeats:
         touch $log
         echo "$wd/rules_annotation/run_masking.sh" &>> $log
 	$wd/rules_annotation/run_masking.sh
-        touch {output}
+        wait
+	touch {output}
         """
