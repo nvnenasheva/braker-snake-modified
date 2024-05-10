@@ -122,7 +122,7 @@ snakemake -s Snakefile_annotate --executor slurm --default-resources slurm_accou
 
 Everything that relies on download from the web is fragile. For example, the error message `panic: runtime error: invalid memory address or nil pointer dereference` can happen when a ncbi datasets genome data download fails. Simply restart the workflow (do not delete previously obtained data). It will automatically try to fix it.
 
-If a fastqdump was interrupted during gzip (because sth else killed the pipeline), you may have to go to the fastq folders of species and delete the unfinished library files because restarting. Otherwise, hisat2 will fail on the incomplete input
+If a fastqdump was interrupted during gzip (because sth else killed the pipeline), you may have to go to the fastq folders of species and delete the unfinished library files before restarting. Otherwise, hisat2 will fail on the incomplete input
 
 ## Current DAGs with example data
 
