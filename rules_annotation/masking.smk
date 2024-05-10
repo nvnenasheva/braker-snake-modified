@@ -24,7 +24,7 @@ rule mask_repeats:
 	export OUTPUT_FOLDER={{config['TARGET']['output_folder']}}
         log=data/checkpoints_annotate/{params.spid}_repeats.log
         touch $log
-        echo "$wd/run_masking.sh" &>> $log
+        echo "$wd/rules_annotation/run_masking.sh" &>> $log
 	$wd/run_masking.sh
         touch {output}
         """
