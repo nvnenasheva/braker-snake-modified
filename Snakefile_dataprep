@@ -29,7 +29,7 @@ input_csv = config['INPUT']['input_csv']
 localrules: all, \
             download_assembly_info, assembly_json_to_tbl, classify_species, prepare_download_assemblies_from_ncbi, execute_genome_download_commands, delete_ncbi_readme, \
             prepare_legacy_protein_download, execute_legacy_prot_download_commands, write_simplify_legacy_protein_headers_cmds, execute_fix_headers_commands, \
-            shorten_genomic_fasta_headers, \
+            shorten_genomic_fasta_headers, select_pseudo, add_introns, gff3_to_gtf, \
             download_orthodb_partitions, \
             retrieve_rnaseq_info_from_sra, cleanup_sam_bam_unsorted_files, cleanup_sorted_bam_files, remove_bad_libraries, cleanup_rnaseq, \
             aggregate_results
