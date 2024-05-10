@@ -501,6 +501,11 @@ rule delete_ncbi_readme:
             raise Exception(f"Error writing to file: {output.done}")
 
 
+# This rule performs a number of processing steps on the reference annotation file.
+# The steps are necessary because we modified the FASTA headers, before.
+# Among others, this rule extracts pseudogenes into a file pseudo.gff3, that is
+# not directly needed as input for the DeepLearner, but for evaluation of 
+# prediction accuracy, later.
 rule select_pseudo:
     input:
         download_done = "data/checkpoints_dataprep/{taxon}_A09_shorten_genomic_headers.done",
@@ -558,8 +563,8 @@ rule select_pseudo:
         """
 
 
-
-
+# This rule uses AGAT to add introns. They are by default not contained in the
+# reference annotation. AGAT also fixes some format inconsistency issues.
 rule add_introns:
     input:
         download_done = "data/checkpoints_dataprep/{taxon}_A11_select_pseudo.done",
@@ -596,7 +601,7 @@ rule add_introns:
         touch {output.done}
         """
 
-
+# This rule converts the modified gff3 to gtf format.
 rule gff3_to_gtf:
     input:
         download_done = "data/checkpoints_dataprep/{taxon}_A12_add_introns.done",
