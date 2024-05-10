@@ -115,9 +115,6 @@ cd braker-snake
 Run the data download and processing pipeline:
 
 ```
-mamba activate snakemake
-module load singularity
-#cd braker-snake
 snakemake -s Snakefile_dataprep --executor slurm --default-resources slurm_account=none slurm_partition=batch --jobs=10 --use-apptainer
 ```
 
