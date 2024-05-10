@@ -18,3 +18,4 @@ RepeatMasker -pa {params.threads} -xsmall -lib {params.spid}-families.fa genome.
 cp genome.fa.masked data/species/{params.spid}/genome/genome.fa.masked
 cd $wd
 rm -rf $output_folder
+touch {output}

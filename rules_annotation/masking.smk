@@ -21,11 +21,9 @@ rule mask_repeats:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"
 	wd=${{PWD}}
-	export OUTPUT_FOLDER={{config['TARGET']['output_folder']}}
+	export OUTPUT_FOLDER="{{config['TARGET']['output_folder']}}"
         log=data/checkpoints_annotate/{params.spid}_repeats.log
         touch $log
         echo "$wd/rules_annotation/run_masking.sh" &>> $log
-	$wd/rules_annotation/run_masking.sh
-        wait
-	touch {output}
+	$wd/rules_annotation/run_masking.sh 
         """
