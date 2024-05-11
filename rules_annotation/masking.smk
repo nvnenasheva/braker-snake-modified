@@ -7,11 +7,11 @@
 # We also want to move, not delete, the species specific repeat library files.
 rule mask_repeats:
     output:
-        output = "data/checkpoints_annotate/{spid}_repeats.done"
+        output="data/checkpoints_annotate/{spid}_repeats.done"
     params:
         spid="{spid}",
-        threads = config['SLURM_ARGS']['cpus_per_task'],
-        output_folder = config['TARGET']['output_folder']
+        threads=config['SLURM_ARGS']['cpus_per_task'],
+        output_folder=config['TARGET']['output_folder']
     singularity:
         "docker://dfam/tetools:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -20,11 +20,10 @@ rule mask_repeats:
         runtime=int(config['SLURM_ARGS']['max_runtime'])
     shell:
         """
-        export APPTAINER_BIND="${{PWD}}:${{PWD}}"
+        export APPTAINER_BIND="${{PWD}}:${{PWD}}";
 	wd=${{PWD}}
         log=data/checkpoints_annotate/{params.spid}_repeats.log
         touch $log
-        echo "$wd/rules_annotation/run_masking.sh -s {params.spid} -t {params.threads} -f {params.output_folder> -o {output}
-" &>> $log
+        echo "$wd/rules_annotation/run_masking.sh -s {params.spid} -t {params.threads} -f {params.output_folder} -o {output}" &>> $log
 	$wd/rules_annotation/run_masking.sh -s {params.spid} -t {params.threads} -f {params.output_folder} -o {output} 
         """
