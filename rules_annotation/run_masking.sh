@@ -28,7 +28,7 @@ echo "RepeatModeler -database {params.spid} -threads {params.threads} -LTRStruct
 RepeatModeler -database ${spid} -pa ${threads} -LTRStruct
 echo "RepeatMasker -threads {params.threads} -xsmall -lib {params.spid}-families.fa -dir data/species/{params.spid}/genome/" &>> $log
 RepeatMasker -pa ${threads} -xsmall -lib ${spid}-families.fa genome.fa
-cp genome.fa.masked data/species/${spid}/genome/genome.fa.masked
+cp genome.fa.masked $wd/data/species/${spid}/genome/genome.fa.masked
 cd $wd
 rm -rf ${output_folder}
 touch ${output}
