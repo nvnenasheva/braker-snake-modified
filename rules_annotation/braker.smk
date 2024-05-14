@@ -27,6 +27,6 @@ rule run_braker:
         log_file=data/checkpoints_annotate/{params.spid}_braker.log
         wdir=data/species/{params.spid}/braker
         python3 scripts/build_annotation_cmd.py -c {params.csv} -s {params.spid} -t {params.threads} -o $cmd_file -l $log_file -w $wdir
-        #bash $cmd_file
+        bash $cmd_file
         touch {output.done}
         """
