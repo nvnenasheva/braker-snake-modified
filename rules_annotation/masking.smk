@@ -24,6 +24,6 @@ rule mask_repeats:
 	    wd=${{PWD}}
         log=data/checkpoints_annotate/{params.spid}_repeats.log
         touch $log
-        echo "$wd/rules_annotation/run_masking.sh -s {params.spid} -t {params.threads} -f {params.output_folder} -o {output}" &>> $log
-	    $wd/rules_annotation/run_masking.sh -s {params.spid} -t {params.threads} -f {params.output_folder} -o {output} 
+        echo "$wd/scripts/run_masking.sh -s {params.spid} -t {params.threads} -f {params.output_folder} -o {output}" &>> $log
+	    $wd/scripts/run_masking.sh -s {params.spid} -t {params.threads} -f {params.output_folder} -o {output} 
         """
