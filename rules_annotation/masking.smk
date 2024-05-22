@@ -21,9 +21,9 @@ rule mask_repeats:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}";
-	    wd=${{PWD}}
+        wd=${{PWD}}
         log=data/checkpoints_annotate/{params.spid}_repeats.log
         touch $log
         echo "$wd/scripts/run_masking.sh -s {params.spid} -t {params.threads} -f {params.output_folder} -o {output}" &>> $log
-	    $wd/scripts/run_masking.sh -s {params.spid} -t {params.threads} -f {params.output_folder} -o {output} 
+        $wd/scripts/run_masking.sh -s {params.spid} -t {params.threads} -f {params.output_folder} -o {output} 
         """
