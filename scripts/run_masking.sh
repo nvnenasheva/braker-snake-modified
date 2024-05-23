@@ -26,7 +26,7 @@ echo "BuildDatabase -name ${spid} -dir data/species/${spid}/genome" &>> $log
 BuildDatabase -name ${spid} genome.fa &>> $log
 echo "RepeatModeler -database ${spid} -threads ${threads} -LTRStruct" &>> $log
 RepeatModeler -database ${spid} -threads ${threads} -LTRStruct &>> $log
-echo "RepeatMasker -threads ${threads} -xsmall -lib ${spid}-families.fa -dir data/species/${spid}/genome/" &>> $log
+echo "RepeatMasker -pa ${threads} -xsmall -lib ${spid}-families.fa -dir data/species/${spid}/genome/" &>> $log
 RepeatMasker -threads ${threads} -xsmall -lib ${spid}-families.fa genome.fa &>> $log
 cp genome.fa.masked $wd/data/species/${spid}/genome/genome.fa.masked
 cp ${spid}-families.fa $wd/data/species/${spid}/genome/${spid}-families.fa
