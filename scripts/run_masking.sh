@@ -31,6 +31,7 @@ RepeatMasker -pa ${threads} -xsmall -lib ${spid}-families.fa genome.fa &>> $log
 cp genome.fa.masked $wd/data/species/${spid}/genome/genome.fa.masked
 cp ${spid}-families.fa $wd/data/species/${spid}/genome/${spid}-families.fa
 cp ${spid}-families.stk $wd/data/species/${spid}/genome/${spid}-families.stk
+cp ${spid}_masking.log $wd/data/checkpoints_annotate/${spid}_masking.log
 cd $wd
 rm -rf ${output_folder}
 touch ${output}
