@@ -52,7 +52,7 @@ include: "rules_annotation/busco.smk"
 # Main rule to process each taxon
 rule all:
     input:
-        expand("data/checkpoints_annotate/{spid}_braker.done", spid=identifiers)
+        expand("data/checkpoints_annotate/{spid}_busco.done", spid=identifiers)
         # This is the place where you have to expand when you are waiting for more targets! For example,
         # we will implement RNA-Seq download, and this is where you have to add the RNA-Seq targets.
 
