@@ -21,7 +21,7 @@ df = pd.read_csv(args.csv)
 row = df.loc[df['species'] == args.species]
 cmd = ""
 cmd += 'busco --in=' + str(args.braker)
-cmd += ' --mode=genome'
+cmd += ' --mode=proteins'
 cmd += ' --lineage_dataset=' + row['busco_lineage'].values[0]
 cmd += ' --cpu=' + str(args.threads)
 cmd += ' --out=busco_' + str(args.species)
