@@ -47,7 +47,7 @@ if not Path(checkptdir).exists():
 # Include other rule files (assuming they define their own targets without using wildcards inappropriately)
 include: "rules_annotation/masking.smk"
 include: "rules_annotation/braker.smk"
-# include: "rules_annotation/busco.smk" <- implement!
+include: "rules_annotation/busco.smk"
 
 # Main rule to process each taxon
 rule all:
