@@ -23,7 +23,7 @@ rule run_busco:
         cmd_file=data/checkpoints_annotate/{params.spid}_busco.cmd
         log_file=data/checkpoints_annotate/{params.spid}_busco.log
         wdir=data/species/{params.spid}/busco
-        python3 scripts/build_busco_cmd.py -c {params.csv} -s {params.spid} -t {params.threads} -o $cmd_file -b data/species/{params.spid}/braker -l $log_file -w $wdir
+        python3 scripts/build_busco_cmd.py -c {params.csv} -s {params.spid} -t {params.threads} -o $cmd_file -b data/species/{params.spid}/braker/braker.aa -l $log_file -w $wdir
         bash $cmd_file 
         touch {output.done}
         """
