@@ -10,12 +10,13 @@ while getopts ${OPTSTRING} opt; do
 	case ${opt} in
 		s) spid="${OPTARG}";;
 		t) threads="${OPTARG}";;
-		f) csv="${OPTARG}";;
+		c) csv="${OPTARG}";;
 		o) output="${OPTARG}";;
 		?) echo "Invalid option"; exit 1;;
 	esac
 done 
 
+source ~/.bashrc
 conda activate busco_env
 cmd_file=data/checkpoints_annotate/${spid}_busco.cmd
 log_file=data/checkpoints_annotate/${spid}_busco.log
