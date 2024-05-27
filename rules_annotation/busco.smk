@@ -11,8 +11,8 @@ rule run_busco:
         spid="{spid}",
         threads = config['SLURM_ARGS']['cpus_per_task'],
         csv = config['INPUT']['species_csv']
-    singularity:
-        "docker://katharinahoff/response:devel"
+    #singularity:
+     #   "docker://katharinahoff/response:devel"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
     resources:
         mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
@@ -20,6 +20,8 @@ rule run_busco:
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}";
+        source /opt/busco/conda_init
+        conda activate busco_env
         cmd_file=data/checkpoints_annotate/{params.spid}_busco.cmd
         log_file=data/checkpoints_annotate/{params.spid}_busco.log
         wdir=data/species/{params.spid}/busco
