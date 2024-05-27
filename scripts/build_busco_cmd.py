@@ -24,7 +24,7 @@ cmd += 'busco --in=' + str(args.braker)
 cmd += ' --mode=proteins'
 cmd += ' --lineage_dataset=' + row['busco_lineage'].values[0]
 cmd += ' --cpu=' + str(args.threads)
-cmd += ' --out=busco_' + str(args.species)
+cmd += ' --out=/data/species/' + str(args.species) + '/busco'
 cmd += ' &> ' + args.logfile
 
 # write command to output file
