@@ -38,7 +38,7 @@ rule extract_busco_scores:
 
         subdirectories = ['genomefile', 'annotfile', 'brakerfile']
         for subdir in subdirectories:
-            file_path = f"data/{params.spid}/busco/{subdir}/short_summary.specific.stramenopiles_odb10.{subdir}.txt"
+            file_path = f"data/species/{params.spid}/busco/{subdir}/short_summary.specific.stramenopiles_odb10.{subdir}.txt"
             if os.path.exists(file_path):  # Check if file exists
                 with open(file_path, 'r') as file:
                     for line in file:
