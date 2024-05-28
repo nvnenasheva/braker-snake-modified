@@ -1,7 +1,5 @@
-# add a rule here that performs a BUSCO assessment on the braker.aa / annotation protein files
-# look at how this was solved for building the braker commands in braker.smk / build_annotation_cmd.py
-# BUSCO is available in the response container, you can directly activate the conda environment
-# in the rule's shell command.
+# rule that performs a BUSCO assessment on the braker.aa / annotation protein files and the genome.fa file
+# works similar to the braker rule
 rule run_busco:
     input:
         input = "data/checkpoints_annotate/{spid}_braker.done"
@@ -24,3 +22,37 @@ rule run_busco:
         echo "$wd/scripts/run_busco.sh -s {params.spid} -t {params.threads} -c {params.csv} -o {output}" &>> $log
         $wd/scripts/run_busco.sh -s {params.spid} -t {params.threads} -c {params.csv} -o {output}
         """
+
+# rule that extracts the busco scores 
+rule extract_busco_scores:
+    input:
+        input = "data/checkpoints_annotate/{spid}_busco.done"
+    output:
+        table = "data/checkpoints_annotate/{spid}_busco.csv"
+    params:
+        spid = "{spid}"
+    run:
+        #get busco scores
+        #pattern = re.compile(r"C:(\d+\.\d+)%\[S")
+        scores = []
+
+        subdirectories = ['genomefile', 'annotfile', 'brakerfile']
+        for subdir in subdirectories:
+            file_path = f"data/{params.spid}/busco/{subdir}/short_summary.specific.stramenopiles_odb10.{subdir}.txt"
+            if os.path.exists(file_path):  # Check if file exists
+                with open(file_path, 'r') as file:
+                    for line in file:
+                        match = re.search(r"C:(\d+\.\d+)%\[S",line)
+                        if match:
+                            score = match.group(1)
+                            scores.append(f"{score}%")
+                            break
+            else:
+                scores.append('NA')
+
+        #get a dataframe with the scores
+        data = {'species': [params.spid], 'genome_score': scores[0], 'annot_score': scores[1], 'braker_score': scores[2]}
+        df = pd.DataFrame(data)
+
+        # Save the DataFrame to a CSV file
+        df.to_csv(output.table, index=False) 
