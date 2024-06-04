@@ -596,11 +596,18 @@ rule add_introns:
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile
             ## ACHTUNG: FEHLERQUELLE MIT EMBL HIER:
+<<<<<<< HEAD
             # Schritt 1 zur Loesung: grep -v -P "ID=id-[^;]+;Parent=gene-" annot.gff3 > tmp2_annot.gff3
             # ersetze annot.gff3 durch tmp2_annot.gff3
             grep -v -P "ID=id-[^;]+;Parent=gene-" data/species/${{species}}/annot/annot.gff3 > data/species/${{species}}/annot/tmp2_annot.gff3
             echo "agat_sp_add_introns.pl --gff data/species/${{species}}/annot/tmp2_annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
             agat_sp_add_introns.pl --gff data/species/${{species}}/annot/tmp2_annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3 &>> $logfile
+=======
+            # Schritt 1 zur Loesung: grep -v -P "ID=id-[^;]+;Parent=gene-" annot.gff3 > tmp4_annot.gff3
+            # ersetze annot.gff3 durch tmp4_annot.gff3
+            echo "agat_sp_add_introns.pl --gff data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
+            agat_sp_add_introns.pl --gff data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3 &>> $logfile
+>>>>>>> 334a0329ac43b8e2d1a5652b6b3e823b8130e9a4
         done
         touch {output.done}
         """
