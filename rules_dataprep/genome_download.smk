@@ -595,8 +595,12 @@ rule add_introns:
         done < {input.annotated_tbl}
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile
-            echo "agat_sp_add_introns.pl --gff data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
-            agat_sp_add_introns.pl --gff data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3 &>> $logfile
+            ## ACHTUNG: FEHLERQUELLE MIT EMBL HIER:
+            # Schritt 1 zur Loesung: grep -v -P "ID=id-[^;]+;Parent=gene-" annot.gff3 > tmp2_annot.gff3
+            # ersetze annot.gff3 durch tmp2_annot.gff3
+            grep -v -P "ID=id-[^;]+;Parent=gene-" data/species/${{species}}/annot/annot.gff3 > data/species/${{species}}/annot/tmp2_annot.gff3
+            echo "agat_sp_add_introns.pl --gff data/species/${{species}}/annot/tmp2_annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
+            agat_sp_add_introns.pl --gff data/species/${{species}}/annot/tmp2_annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3 &>> $logfile
         done
         touch {output.done}
         """
@@ -632,6 +636,8 @@ rule gff3_to_gtf:
         done < {input.annotated_tbl}
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile
+            # leider gibt es immer noch trotzdem doofe .RNA features, die kein Parent haben
+            # wir brauchen ein Python Skript, dass alle .RNA features, die kein Parent haben, um ein Parent bereichert
             echo "gff3_to_gtf.pl data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/annot.gtf" >> $logfile
             gff3_to_gtf.pl data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/annot.gtf &>> $logfile
             echo "rm data/species/${{species}}/annot/list.tbl data/species/${{species}}/annot/annot.gff3 data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
