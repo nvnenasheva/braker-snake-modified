@@ -501,6 +501,39 @@ rule delete_ncbi_readme:
             raise Exception(f"Error writing to file: {output.done}")
 
 
+rule find_organelles:
+    input:
+        annotated_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
+        download_done = "data/checkpoints_dataprep/{taxon}_A09_shorten_genomic_headers.done"
+    output:
+        done = "data/checkpoints_dataprep/{taxon}_A09_b.done"
+    params:
+        taxon = lambda wildcards: wildcards.taxon
+    wildcard_constraints:
+        taxon="[^_]+"
+    shell:
+        """
+        logfile="data/checkpoints_dataprep/{params.taxon}_A09_b.log"
+        echo "" > $logfile
+        # Initialize the species_list as an array
+        declare -a species_list
+        # Read from the input file and modify the species names
+        while IFS=$'\t' read -r accession species others; do
+            if [[ "$accession" == "accession" ]]; then
+                continue
+            fi
+            # Replace spaces with underscores in the species name
+            modified_species="${{species// /_}}"
+            species_list+=("$modified_species")
+        done < {input.annotated_tbl_path}
+        echo "done while" > log
+        for species in "${{species_list[@]}}"; do
+            scripts/find_organelles.sh data/${{species}}/genome/genome.fa > data/${{species}}/genome/organelles.lst >> $logfile
+        done
+        touch {output.done}
+        """
+        
+
 # This rule performs a number of processing steps on the reference annotation file.
 # The steps are necessary because we modified the FASTA headers, before.
 # Among others, this rule extracts pseudogenes into a file pseudo.gff3, that is
@@ -508,7 +541,7 @@ rule delete_ncbi_readme:
 # prediction accuracy, later.
 rule select_pseudo:
     input:
-        download_done = "data/checkpoints_dataprep/{taxon}_A09_shorten_genomic_headers.done",
+        download_done = "data/checkpoints_dataprep/{taxon}_A09_b.done",
         annotated_tbl = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl"
     output:
         done = "data/checkpoints_dataprep/{taxon}_A11_select_pseudo.done"
@@ -538,12 +571,13 @@ rule select_pseudo:
             echo "Processing species: ${{species}}" >> $logfile
             echo "grep '^>' data/species/${{species}}/genome/genome.fa > data/species/${{species}}/annot/deflines" >> $logfile
             grep '^>' data/species/${{species}}/genome/genome.fa > data/species/${{species}}/annot/deflines
-            echo "cat data/species/${{species}}/annot/deflines | cut -f1 -d' ' | grep -v MT | cut -b2- > data/species/${{species}}/annot/z" >> $logfile
-            cat data/species/${{species}}/annot/deflines | cut -f1 -d' ' | grep -v MT | cut -b2- > data/species/${{species}}/annot/z
+            echo "grep -v -f data/species/${{species}}/genome/organelles.lst data/species/${{species}}/annot/deflines | cut -f1 -d' ' | cut -b2- > data/species/${{species}}/annot/z" >> $logfile
+            grep -v -f data/species/${{species}}/genome/organelles.lst data/species/${{species}}/annot/deflines | cut -f1 -d' ' | cut -b2- > data/species/${{species}}/annot/z
             echo "paste data/species/${{species}}/annot/z data/species/${{species}}/annot/z > data/species/${{species}}/annot/list.tbl" >> $logfile
             paste data/species/${{species}}/annot/z data/species/${{species}}/annot/z > data/species/${{species}}/annot/list.tbl
             echo "rm data/species/${{species}}/annot/z data/species/${{species}}/annot/deflines" >> $logfile
             rm data/species/${{species}}/annot/z data/species/${{species}}/annot/deflines
+            sed -e 's/\ttmRNA\t/\tmRNA\t/g' -e 's/=tmRNA;/=mRNA;/g' data/species/${{species}}/annot/annot.gff3 | grep -v '\tinverted_repeat\t' > data/species/${{species}}/annot/annot_modified.gff3 && mv data/species/${{species}}/annot/annot_modified.gff3 data/species/${{species}}/annot/annot.gff3
             echo "gff_to_gff_subset.pl --in data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/tmp_annot.gff3 --list data/species/${{species}}/annot/list.tbl --col 2 --v &> /dev/null" >> $logfile
             gff_to_gff_subset.pl --in data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/tmp_annot.gff3 --list data/species/${{species}}/annot/list.tbl --col 2 --v &> /dev/null
             echo "##gff-version 3" > data/species/${{species}}/annot/annot.gff3
@@ -596,18 +630,11 @@ rule add_introns:
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile
             ## ACHTUNG: FEHLERQUELLE MIT EMBL HIER:
-<<<<<<< HEAD
             # Schritt 1 zur Loesung: grep -v -P "ID=id-[^;]+;Parent=gene-" annot.gff3 > tmp2_annot.gff3
             # ersetze annot.gff3 durch tmp2_annot.gff3
             grep -v -P "ID=id-[^;]+;Parent=gene-" data/species/${{species}}/annot/annot.gff3 > data/species/${{species}}/annot/tmp2_annot.gff3
             echo "agat_sp_add_introns.pl --gff data/species/${{species}}/annot/tmp2_annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
             agat_sp_add_introns.pl --gff data/species/${{species}}/annot/tmp2_annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3 &>> $logfile
-=======
-            # Schritt 1 zur Loesung: grep -v -P "ID=id-[^;]+;Parent=gene-" annot.gff3 > tmp4_annot.gff3
-            # ersetze annot.gff3 durch tmp4_annot.gff3
-            echo "agat_sp_add_introns.pl --gff data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
-            agat_sp_add_introns.pl --gff data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3 &>> $logfile
->>>>>>> 334a0329ac43b8e2d1a5652b6b3e823b8130e9a4
         done
         touch {output.done}
         """
@@ -643,8 +670,8 @@ rule gff3_to_gtf:
         done < {input.annotated_tbl}
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile
-            # leider gibt es immer noch trotzdem doofe .RNA features, die kein Parent haben
-            # wir brauchen ein Python Skript, dass alle .RNA features, die kein Parent haben, um ein Parent bereichert
+            # remove lines containing tRNA to avoid the missing parent problem 
+            grep -vi "trna" annot_tmp.gff3 > annot_tmp2.gff3 && mv annot_tmp2.gff3 annot_tmp.gff3
             echo "gff3_to_gtf.pl data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/annot.gtf" >> $logfile
             gff3_to_gtf.pl data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/annot.gtf &>> $logfile
             echo "rm data/species/${{species}}/annot/list.tbl data/species/${{species}}/annot/annot.gff3 data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
