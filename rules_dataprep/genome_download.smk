@@ -519,6 +519,7 @@ rule find_organelles:
         declare -a species_list
         # Read from the input file and modify the species names
         while IFS=$'\t' read -r accession species others; do
+            #echo "Reading line" >> $logfile
             if [[ "$accession" == "accession" ]]; then
                 continue
             fi
@@ -526,9 +527,10 @@ rule find_organelles:
             modified_species="${{species// /_}}"
             species_list+=("$modified_species")
         done < {input.annotated_tbl_path}
-        echo "done while" > log
+        #echo "done while" >> $logfile
+        #Species list: "${species_list[@]}" >> $logfile
         for species in "${{species_list[@]}}"; do
-            scripts/find_organelles.sh data/${{species}}/genome/genome.fa > data/${{species}}/genome/organelles.lst >> $logfile
+            bash scripts/find_organelles.sh data/${{species}}/genome/genome.fa > data/${{species}}/genome/organelles.lst >> $logfile
         done
         touch {output.done}
         """
