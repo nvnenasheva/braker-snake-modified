@@ -515,22 +515,16 @@ rule find_organelles:
         """
         logfile="data/checkpoints_dataprep/{params.taxon}_A09_b.log"
         echo "" > $logfile
-        # Initialize the species_list as an array
         declare -a species_list
-        # Read from the input file and modify the species names
         while IFS=$'\t' read -r accession species others; do
-            #echo "Reading line" >> $logfile
             if [[ "$accession" == "accession" ]]; then
                 continue
             fi
-            # Replace spaces with underscores in the species name
             modified_species="${{species// /_}}"
             species_list+=("$modified_species")
         done < {input.annotated_tbl_path}
-        #echo "done while" >> $logfile
-        #Species list: "${species_list[@]}" >> $logfile
         for species in "${{species_list[@]}}"; do
-            bash scripts/find_organelles.sh data/${{species}}/genome/genome.fa > data/${{species}}/genome/organelles.lst >> $logfile
+            bash scripts/find_organelles.sh data/species/${{species}}/genome/genome.fa > data/species/${{species}}/genome/organelles.lst >> $logfile
         done
         touch {output.done}
         """
@@ -579,9 +573,10 @@ rule select_pseudo:
             paste data/species/${{species}}/annot/z data/species/${{species}}/annot/z > data/species/${{species}}/annot/list.tbl
             echo "rm data/species/${{species}}/annot/z data/species/${{species}}/annot/deflines" >> $logfile
             rm data/species/${{species}}/annot/z data/species/${{species}}/annot/deflines
+            echo "sed ..." >> $logfile 
             sed -e 's/\ttmRNA\t/\tmRNA\t/g' -e 's/=tmRNA;/=mRNA;/g' data/species/${{species}}/annot/annot.gff3 | grep -v '\tinverted_repeat\t' > data/species/${{species}}/annot/annot_modified.gff3 && mv data/species/${{species}}/annot/annot_modified.gff3 data/species/${{species}}/annot/annot.gff3
             echo "gff_to_gff_subset.pl --in data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/tmp_annot.gff3 --list data/species/${{species}}/annot/list.tbl --col 2 --v &> /dev/null" >> $logfile
-            gff_to_gff_subset.pl --in data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/tmp_annot.gff3 --list data/species/${{species}}/annot/list.tbl --col 2 --v &> /dev/null
+            gff_to_gff_subset.pl --in data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/tmp_annot.gff3 --list data/species/${{species}}/annot/list.tbl --col 2 --v
             echo "##gff-version 3" > data/species/${{species}}/annot/annot.gff3
             echo "Running probuild..." >> $logfile
             probuild --stat_fasta --seq data/species/${{species}}/genome/genome.fa | cut -f1,2 | tr -d '>' | grep -v '^$' | awk '{{print "##sequence-region  " $1 "  1 " $2}}' >> data/species/$species/annot/annot.gff3
@@ -634,6 +629,7 @@ rule add_introns:
             ## ACHTUNG: FEHLERQUELLE MIT EMBL HIER:
             # Schritt 1 zur Loesung: grep -v -P "ID=id-[^;]+;Parent=gene-" annot.gff3 > tmp2_annot.gff3
             # ersetze annot.gff3 durch tmp2_annot.gff3
+            grep -v "\tRNA\t" data/species/${{species}}/annot.gff3 > data/species/${{species}}/annot/tmp2_annot.gff3
             grep -v -P "ID=id-[^;]+;Parent=gene-" data/species/${{species}}/annot/annot.gff3 > data/species/${{species}}/annot/tmp2_annot.gff3
             echo "agat_sp_add_introns.pl --gff data/species/${{species}}/annot/tmp2_annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
             agat_sp_add_introns.pl --gff data/species/${{species}}/annot/tmp2_annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3 &>> $logfile
