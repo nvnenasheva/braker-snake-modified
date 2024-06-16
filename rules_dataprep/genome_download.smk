@@ -629,8 +629,7 @@ rule add_introns:
             ## ACHTUNG: FEHLERQUELLE MIT EMBL HIER:
             # Schritt 1 zur Loesung: grep -v -P "ID=id-[^;]+;Parent=gene-" annot.gff3 > tmp2_annot.gff3
             # ersetze annot.gff3 durch tmp2_annot.gff3
-            grep -v "\tRNA\t" data/species/${{species}}/annot.gff3 > data/species/${{species}}/annot/tmp2_annot.gff3
-            grep -v -P "ID=id-[^;]+;Parent=gene-" data/species/${{species}}/annot/annot.gff3 > data/species/${{species}}/annot/tmp2_annot.gff3
+            grep -v -E "ID=id-[^;]+;Parent=gene-" data/species/${{species}}/annot/annot.gff3 > data/species/${{species}}/annot/tmp2_annot.gff3
             echo "agat_sp_add_introns.pl --gff data/species/${{species}}/annot/tmp2_annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
             agat_sp_add_introns.pl --gff data/species/${{species}}/annot/tmp2_annot.gff3 --out data/species/${{species}}/annot/annot_tmp.gff3 &>> $logfile
         done
@@ -669,7 +668,7 @@ rule gff3_to_gtf:
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile
             # remove lines containing tRNA to avoid the missing parent problem 
-            grep -vi "trna" annot_tmp.gff3 > annot_tmp2.gff3 && mv annot_tmp2.gff3 annot_tmp.gff3
+            grep -vi "trna" data/species/${{species}}/annot/annot_tmp.gff3 > data/species/${{species}}/annot/annot_tmp2.gff3 && mv data/species/${{species}}/annot/annot_tmp2.gff3 data/species/${{species}}/annot/annot_tmp.gff3
             echo "gff3_to_gtf.pl data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/annot.gtf" >> $logfile
             gff3_to_gtf.pl data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/annot.gtf &>> $logfile
             echo "rm data/species/${{species}}/annot/list.tbl data/species/${{species}}/annot/annot.gff3 data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
