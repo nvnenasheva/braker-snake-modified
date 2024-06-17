@@ -524,7 +524,7 @@ rule find_organelles:
             species_list+=("$modified_species")
         done < {input.annotated_tbl_path}
         for species in "${{species_list[@]}}"; do
-            bash scripts/find_organelles.sh data/species/${{species}}/genome/genome.fa > data/species/${{species}}/genome/organelles.lst >> $logfile
+            bash scripts/find_organelles.sh data/species/${{species}}/genome/genome.fa > data/species/${{species}}/genome/organelles.lst
         done
         touch {output.done}
         """
@@ -576,7 +576,7 @@ rule select_pseudo:
             echo "sed ..." >> $logfile 
             sed -e 's/\ttmRNA\t/\tmRNA\t/g' -e 's/=tmRNA;/=mRNA;/g' data/species/${{species}}/annot/annot.gff3 | grep -v '\tinverted_repeat\t' > data/species/${{species}}/annot/annot_modified.gff3 && mv data/species/${{species}}/annot/annot_modified.gff3 data/species/${{species}}/annot/annot.gff3
             echo "gff_to_gff_subset.pl --in data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/tmp_annot.gff3 --list data/species/${{species}}/annot/list.tbl --col 2 --v &> /dev/null" >> $logfile
-            gff_to_gff_subset.pl --in data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/tmp_annot.gff3 --list data/species/${{species}}/annot/list.tbl --col 2 --v
+            gff_to_gff_subset.pl --in data/species/${{species}}/annot/annot.gff3 --out data/species/${{species}}/annot/tmp_annot.gff3 --list data/species/${{species}}/annot/list.tbl --col 2 --v &> /dev/null
             echo "##gff-version 3" > data/species/${{species}}/annot/annot.gff3
             echo "Running probuild..." >> $logfile
             probuild --stat_fasta --seq data/species/${{species}}/genome/genome.fa | cut -f1,2 | tr -d '>' | grep -v '^$' | awk '{{print "##sequence-region  " $1 "  1 " $2}}' >> data/species/$species/annot/annot.gff3
