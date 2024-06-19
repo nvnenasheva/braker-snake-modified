@@ -672,7 +672,7 @@ rule gff3_to_gtf:
             echo "gff3_to_gtf.pl data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/annot.gtf" >> $logfile
             gff3_to_gtf.pl data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/annot.gtf &>> $logfile
             echo "rm data/species/${{species}}/annot/list.tbl data/species/${{species}}/annot/annot.gff3 data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
-            rm data/species/${{species}}/annot/list.tbl data/species/${{species}}/annot/annot.gff3 data/species/${{species}}/annot/annot_tmp.gff3
+            rm data/species/${{species}}/annot/list.tbl data/species/${{species}}/annot/annot.gff3 data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/tmp2_annot.gff3
         done
         touch {output.done}
         """
