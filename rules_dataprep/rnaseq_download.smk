@@ -154,7 +154,6 @@ rule run_download_fastq:
                 if [ ! -f "data/species/$species_fixed/fastq/${{id}}_1.fastq.gz" ] && [ ! -f "data/species/$species_fixed/fastq/${{id}}_2.fastq.gz" ]; then
                     echo "prefetch -O data/species/$species_fixed/sra $id" &>> $logfile
                     prefetch -O data/species/$species_fixed/sra $id --max-size 30g &>> $logfile
-                    #vdb-config --set /repository/user/main/public/apps/sratoolkit/download/limit=30000000000 &>> $logfile
                     echo "fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -e {params.threads}" &>> $logfile
                     fasterq-dump data/species/$species_fixed/sra/$id/$id.sra --split-files -O data/species/$species_fixed/fastq -e {params.threads} &>> $logfile
                     echo "gzip data/species/$species_fixed/fastq/${{id}}_1.fastq" &>> $logfile
