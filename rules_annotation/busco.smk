@@ -33,7 +33,7 @@ rule extract_busco_scores:
         spid = "{spid}"
     run:
         #get busco scores
-        #pattern = re.compile(r"C:(\d+\.\d+)%\[S")
+        pattern = r'C:\d+(\.\d+)?%\[S:\d+(\.\d+)?%,D:\d+(\.\d+)?%\],F:\d+(\.\d+)?%,M:\d+(\.\d+)?%,n:\d+'
         scores = []
 
         subdirectories = ['genomefile', 'annotfile', 'brakerfile']
@@ -42,10 +42,9 @@ rule extract_busco_scores:
             if os.path.exists(file_path):  # Check if file exists
                 with open(file_path, 'r') as file:
                     for line in file:
-                        match = re.search(r"C:(\d+\.\d+)%\[S",line)
+                        match = re.match(pattern,line)
                         if match:
-                            score = match.group(1)
-                            scores.append(f"{score}%")
+                            scores.append(f"{match}")
                             break
             else:
                 scores.append('NA')
