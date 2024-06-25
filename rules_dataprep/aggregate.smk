@@ -1,4 +1,4 @@
-# this is a dirty implementation because I don't know how to connect the odb rules to the taxon rules
+# dirty implementation because I don't know how to connect the odb rules to the taxon rules
 # but since ODB download is pretty fast compared to other parts of the workflow, it is safe to assume
 # that everything will work out ok. If not, this rule will fail, and the workflow can be restarted
 # after ODB download has finished.
@@ -38,7 +38,7 @@ rule aggregate_results:
         # this df contains all species in a taxon
         df = pd.concat([df_anno, df_blank])
         # generate an empty dataframe called out_data with the columns species, taxon, accession, odb_file, rnaseq_file, genome_file, legacy_prot_file, annotation_file
-        out_data = pd.DataFrame(columns=['species', 'taxon', 'accession', 'genome_file', 'odb_file', 'rnaseq_file', 'legacy_prot_file', 'annotation_file', 'busco_db'])
+        out_data = pd.DataFrame(columns=['species', 'taxon', 'accession', 'genome_file', 'odb_file', 'rnaseq_file', 'legacy_prot_file', 'annotation_file', 'busco_lineage'])
         # iterate over the df
         print(df)
         for index, row in df.iterrows():
@@ -71,7 +71,7 @@ rule aggregate_results:
             if os.path.isfile(annotation_file_path):
                 annotation_file = annotation_file_path
             # append the data to the out_data dataframe
-            new_row = pd.DataFrame([{'species': species, 'taxon': params.taxon, 'accession': accession, 'genome_file': genome_file, 'odb_file': odb_file, 'rnaseq_file': rnaseq_file, 'legacy_prot_file': legacy_prot_file, 'annotation_file': annotation_file, 'busco_db': busco_db}])
+            new_row = pd.DataFrame([{'species': species, 'taxon': params.taxon, 'accession': accession, 'genome_file': genome_file, 'odb_file': odb_file, 'rnaseq_file': rnaseq_file, 'legacy_prot_file': legacy_prot_file, 'annotation_file': annotation_file, 'busco_lineage': busco_db}])
             out_data = pd.concat([out_data, new_row], ignore_index=True)
         # write the out_data dataframe to a csv file
         out_data.to_csv(output.table, index=False)
