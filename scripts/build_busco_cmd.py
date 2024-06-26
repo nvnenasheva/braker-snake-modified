@@ -39,7 +39,7 @@ if pd.isna(row['annotation_file'].values[0]):
     cmd_b += ' --out=/data/species/' + str(args.species) + '/busco/brakerfile'
     cmd_b += ' &> ' + args.logfile
 else:
-    cmd_a += 'busco --in=data/species/' + str(args.species) + '/prot/proteins.faa'
+    cmd_a += 'busco --in=data/species/' + str(args.species) + '/prot/protein.faa'
     cmd_a += ' --mode=proteins'
     cmd_a += ' --lineage_dataset=' + row['busco_lineage'].values[0]
     cmd_a += ' --cpu=' + str(args.threads)
