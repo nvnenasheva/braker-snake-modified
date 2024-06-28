@@ -42,9 +42,9 @@ rule extract_busco_scores:
             if os.path.exists(file_path):  # Check if file exists
                 with open(file_path, 'r') as file:
                     for line in file:
-                        match = re.match(pattern,line)
+                        match = re.search(pattern,line)
                         if match:
-                            scores.append(f"{match}")
+                            scores.append(match.group(0))
                             break
             else:
                 scores.append('NA')
