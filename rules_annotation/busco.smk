@@ -32,6 +32,8 @@ rule extract_busco_scores:
     params:
         spid = "{spid}"
     run:
+        #to run a shell command in this rule
+        from subprocess import check_output
         #get busco scores
         pattern = r'C:\d+(\.\d+)?%\[S:\d+(\.\d+)?%,D:\d+(\.\d+)?%\],F:\d+(\.\d+)?%,M:\d+(\.\d+)?%,n:\d+'
         scores = []
@@ -49,8 +51,20 @@ rule extract_busco_scores:
             else:
                 scores.append('NA')
 
+        #get the gene count
+        annot_file_path = f"data/species/{params.spid}/annot/annot.gtf"
+        braker_file_path = f"data/species/{params.spid}/braker/braker.aa"
+        if os.path.exists(annot_file_path):
+            gene_count_cmd = f'cat {annot_file_path} | perl -ne \'if(m/gene_id "([^"]+)"/){{print $1."\\n";}}\' | sort -u | wc -l'
+            gene_count = check_output(gene_count_cmd, shell=True).strip().decode("utf-8")
+        elif os.path.exists(braker_file_path):
+            gene_count_cmd = f'grep ">" {braker_file_path} | grep .t1 | wc -l'
+            gene_count = check_output(gene_count_cmd, shell=True).strip().decode("utf-8")
+        else:
+            gene_count = 'NA'
+
         #get a dataframe with the scores
-        data = {'species': [params.spid], 'genome_score': scores[0], 'annot_score': scores[1], 'braker_score': scores[2]}
+        data = {'species': [params.spid], 'genome_score': scores[0], 'annot_score': scores[1], 'braker_score': scores[2], 'gene_count': gene_count}
         df = pd.DataFrame(data)
 
         # Save the DataFrame to a CSV file
