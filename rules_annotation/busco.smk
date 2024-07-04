@@ -46,7 +46,7 @@ rule extract_busco_scores:
                     for line in file:
                         match = re.search(pattern,line)
                         if match:
-                            scores.append(match.group(0))
+                            scores.append(match.group(1))
                             break
             else:
                 scores.append('NA')
