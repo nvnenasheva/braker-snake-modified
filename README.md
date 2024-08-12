@@ -49,7 +49,7 @@ source ~/.bashrc # to activate miniconda
 conda install -n base -c conda-forge mamba
 mamba create -c conda-forge -c bioconda -n snakemake snakemake
 mamba activate snakemake
-pip install snakemake-executor-plugin-slurms
+pip install snakemake-executor-plugin-slurm
 ```
 
 Bash dependencies (are usually available on a cluster): singularity, curl, zcat, unzip, rm, echo, mkdir, cat, sed, ...
