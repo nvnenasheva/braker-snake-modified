@@ -20,7 +20,7 @@ Data prepration workflow:
 
 Annotation workflow
 
-1. Mask genomes with RepeatModeler/RepeatMasker (since RED does not have diatom/protist data), we must limit the number of parallel jobs to a few because this is very heavy on the i/o, very annoying that we cannot cd into /dev/shm
+1. Mask genomes with RepeatModeler/RepeatMasker (since RED does not have diatom/protist data)
 2. Run BRAKER depending on the input as BRAKER3 or BRAKER2
 3. Run BUSCO on all the protein data sets and compile a summary
 
