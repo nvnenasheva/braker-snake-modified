@@ -16,7 +16,7 @@ while getopts ${OPTSTRING} opt; do
 	esac
 done 
 
-source ~/.bashrc
+source source /opt/busco/conda_init
 conda activate busco_env
 cmd_file=data/checkpoints_annotate/${spid}_busco.cmd
 log_file=data/checkpoints_annotate/${spid}_busco.log

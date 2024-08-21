@@ -9,6 +9,8 @@ rule run_busco:
         spid="{spid}",
         threads = config['SLURM_ARGS']['cpus_per_task'],
         csv = config['INPUT']['species_csv']
+    singularity:
+        "docker://katharinahoff/response:devel"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
     resources:
         mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
@@ -46,7 +48,7 @@ rule extract_busco_scores:
                     for line in file:
                         match = re.search(pattern,line)
                         if match:
-                            scores.append(match.group(1))
+                            scores.append(match.group(0))
                             break
             else:
                 scores.append('NA')
