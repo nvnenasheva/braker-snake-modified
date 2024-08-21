@@ -1,6 +1,8 @@
 # braker-snake
 
-Simple snakemake workflows for handling BRAKER on large data sets to prepare training data for DeepFinder. 
+Simple snakemake workflows for handling BRAKER on large data sets to prepare training data for Tiberius.
+
+**Warning:** This is a not a released software package, it comes without support. We use this workflow internally for bulk genome annotation and it was customized to our needs.
 
 Data prepration workflow:
 
@@ -22,18 +24,6 @@ Annotation workflow
 2. Run BRAKER depending on the input as BRAKER3 or BRAKER2 <- seems to work fine.
 3. Run BUSCO on all the protein data sets and compile a summary <- this is not implement yet
 
-(For Clara's project, we do not need other steps, but the pipeline could serve as template for further expansion in the future.)
-
-## Developing
-
-First rule of development: **always commit and push your changes! Do not keep local unsynchronized changes for longer than 2 hours.**
-
-If you want to develop on this pipeline, please at the moment, communicate with Katharina, Stepan, Clara. Many rules are still completely blank, please let the others know what rule file you are working on to avoid git conflicts.
-
-If you want to fix a bug in an implemented set of rules, no need to communicate. Create a branch, fix the bug, make a pull request. If it has been tested properly, you can merge it yourself. Otherwise wait for Katharina to test the fix prior merging.
-
-Once we have a running end-to-end pipeline, you can create branch for your own development. Please communicate with others to avoid conflicts down the line.
-
 ## Installation
 
 Go do a directory where you have space for many GBs of data. Clone the repository:
@@ -52,7 +42,7 @@ mamba activate snakemake
 pip install snakemake-executor-plugin-slurm
 ```
 
-Bash dependencies (are usually available on a cluster): singularity, curl, zcat, unzip, rm, echo, mkdir, cat, sed, ...
+Bash dependencies (are usually available on the HPC in Greifswald): singularity, curl, zcat, unzip, rm, echo, mkdir, cat, sed, ...
 
 ## Configuration
 
