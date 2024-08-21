@@ -10,7 +10,7 @@ rule run_busco:
         threads = config['SLURM_ARGS']['cpus_per_task'],
         csv = config['INPUT']['species_csv']
     singularity:
-        "docker://katharinahoff/response:devel"
+        "katharinahoff/response-notebook:devel"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
     resources:
         mem_mb=int(config['SLURM_ARGS']['mem_of_node']),
