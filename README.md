@@ -4,7 +4,7 @@ Simple snakemake workflows for handling BRAKER on large data sets to prepare tra
 
 **Warning:** This is a not a released software package, it comes without support. We use this workflow internally for bulk genome annotation and it was customized to our needs.
 
-Data prepration workflow:
+Data preparation workflow:
 
 1. Download the available assemblies for taxa from NCBI
 2. Prioritize in case of species duplications (first choice: reference genome, second choice: max N50)
