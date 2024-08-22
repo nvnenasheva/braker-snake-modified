@@ -171,6 +171,8 @@ rule classify_species:
             data['proteins'] = pd.to_numeric(data['proteins'], errors='coerce')  # Convert 'N/A' to NaN
         except IOError:
             raise Exception(f"Error reading file: {tbl_file_path}")
+        
+        data['species'] = data['species'].str.rstrip('.')
 
         # Make a subset of representative genomes, this can be seen by refseqCategory being not empty
         representative_genomes = data[data['refseqCategory'].notna()]
