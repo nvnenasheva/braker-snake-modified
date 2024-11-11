@@ -2,8 +2,14 @@
 # but since ODB download is pretty fast compared to other parts of the workflow, it is safe to assume
 # that everything will work out ok. If not, this rule will fail, and the workflow can be restarted
 # after ODB download has finished.
+def format_taxon(taxon): 
+    if "_sp_" in taxon:
+        return taxon.replace("_sp_", " sp. ")
+    else:
+        return taxon.replace("_", " ")
+
 rule aggregate_results:
-    input: 
+    input: # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
         rnaseq_done = "data/checkpoints_dataprep/{taxon}_B13_cleanup_rnaseq.done",
         genome_done = "data/checkpoints_dataprep/{taxon}_A10_delete_ncbi_readme.done",
         annotated_tbl_path = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
@@ -13,17 +19,18 @@ rule aggregate_results:
         table = "data/checkpoints_dataprep/{taxon}_C01_data.csv"
     params:
         taxon=lambda wildcards: wildcards.taxon,
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon), # formatted_taxon: Nitzschia sp. pyKryTriq1, Cyclotella cryptica
         input_csv = config['INPUT']['input_csv'],
         odb_dir = config['BRAKER']['orthodb_path']
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon="[^ ]+"
     run:
         # read the input_csv to get the odb partition for each taxon
-        in_csv = pd.read_csv(params.input_csv, header=None, sep=' ', names=['taxa', 'odb_partition', 'busco_db'])
+        in_csv = pd.read_csv(params.input_csv, header=None, sep=',', names=['taxa', 'odb_partition', 'busco_db'])
         # store busco_db
-        busco_db = in_csv[in_csv['taxa'] == params.taxon]['busco_db'].values[0]
+        busco_db = in_csv[in_csv['taxa'] == params.formatted_taxon]['busco_db'].values[0]
         # find out what odb parition applies to the currently given taxon
-        odb_partition = in_csv[in_csv['taxa'] == params.taxon]['odb_partition'].values[0]
+        odb_partition = in_csv[in_csv['taxa'] == params.formatted_taxon]['odb_partition'].values[0]
         # build path to odb file, they sit in data/params.odbdir/odb_partition.fa
         odb_file = params.odb_dir + "/" + odb_partition + ".fa"
         # check if the odb file exists, use try except and die if not
@@ -43,7 +50,7 @@ rule aggregate_results:
         print(df)
         for index, row in df.iterrows():
             # get the species, replace spaces by underscores
-            species = row['species'].replace(" ", "_")
+            species = row['species'].replace(" ", "_").replace(".", "")
             # get the accession
             accession = row['accession']
             # build a base path for the species
@@ -71,7 +78,7 @@ rule aggregate_results:
             if os.path.isfile(annotation_file_path):
                 annotation_file = annotation_file_path
             # append the data to the out_data dataframe
-            new_row = pd.DataFrame([{'species': species, 'taxon': params.taxon, 'accession': accession, 'genome_file': genome_file, 'odb_file': odb_file, 'rnaseq_file': rnaseq_file, 'legacy_prot_file': legacy_prot_file, 'annotation_file': annotation_file, 'busco_lineage': busco_db}])
+            new_row = pd.DataFrame([{'species': species, 'taxon': params.formatted_taxon, 'accession': accession, 'genome_file': genome_file, 'odb_file': odb_file, 'rnaseq_file': rnaseq_file, 'legacy_prot_file': legacy_prot_file, 'annotation_file': annotation_file, 'busco_lineage': busco_db}])
             out_data = pd.concat([out_data, new_row], ignore_index=True)
         # write the out_data dataframe to a csv file
         out_data.to_csv(output.table, index=False)

@@ -25,24 +25,40 @@
 # 3. Unzip the downloaded file to a specified sub-dirlocalrules: all, another_local_ruleectory.
 # 4. Move the assembly data report (JSONL format) to the designated output location.
 # 5. Clean up all intermediate files and directories to maintain a clean working environment.
+
+def format_taxon(taxon): # formatted_taxon: Nitzschia sp. pyKryTriq1, Cyclotella cryptica
+    if "_sp_" in taxon:
+        return taxon.replace("_sp_", " sp. ")
+    else:
+        return taxon.replace("_", " ")
+
 rule download_assembly_info:
     output:
         raw_json = "data/checkpoints_dataprep/{taxon}_A01.json"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://katharinahoff/varus-notebook:v0.0.5"
     shell:
         """
+
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
-        datasets download genome taxon "{params.taxon}" --assembly-source genbank --dehydrated --filename {params.taxon}_ncbi.zip; \
+    
+        # Use the original taxon name with spaces in the datasets command
+        datasets download genome taxon "{params.formatted_taxon}" --assembly-source genbank --dehydrated --filename {params.taxon}_ncbi.zip; \
+        
+        # Unzipping and moving output
         unzip -o {params.taxon}_ncbi.zip -d {params.taxon}_ncbi_dataset; \
+
         mv {params.taxon}_ncbi_dataset/ncbi_dataset/data/assembly_data_report.jsonl {output.raw_json}; \
         rm -rf {params.taxon}_ncbi_dataset {params.taxon}_ncbi.zip; \
-        mkdir -p data/species
+        mkdir -p data/species; \
         """
+
+
 
 
 # Rule: assembly_json_to_tbl
@@ -70,11 +86,13 @@ rule assembly_json_to_tbl:
     output:
         processed_tbl = "data/checkpoints_dataprep/{taxon}_A02.tbl"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     run:
         taxon = wildcards.taxon
+        #taxon = format_taxon(taxon)
         print(taxon)
         json_file_path = f"data/checkpoints_dataprep/{taxon}_A01.json"
         tbl_file_path = f"data/checkpoints_dataprep/{taxon}_A02.tbl"
@@ -106,11 +124,11 @@ rule assembly_json_to_tbl:
                     accession = entry.get('accession', '')
                     species = entry['organism'].get('organismName', '')
                     # only proceed if species does not match sp. as part of the string
-                    if "sp." in species or "uncultured" in species:
+                    if "uncultured" in species: #if "sp." in species or "uncultured" in species:
                         continue
-                    if len(species.split(" ")) != 2:
+                    #if len(species.split(" ")) != 2: # Do not shorten the species name
                         # cut off everthing after the first two words
-                        species = " ".join(species.split(" ")[:2])
+                        #species = " ".join(species.split(" ")[:2])
                     status = entry['assemblyInfo'].get('assemblyStatus', '')
                     proteins = entry.get('annotationInfo', {}).get('stats', {}).get('geneCounts', {}).get('proteinCoding', 'N/A')
                     contigN50 = entry['assemblyStats'].get('contigN50', '')
@@ -156,11 +174,13 @@ rule classify_species:
         already_annotated_tbl = "data/checkpoints_dataprep/{taxon}_A03_annotated.tbl",
         not_annotated_tbl = "data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     run:
         taxon = wildcards.taxon
+        print(taxon)
         tbl_file_path = f"data/checkpoints_dataprep/{taxon}_A02.tbl"
         annotated_tbl_path = f"data/checkpoints_dataprep/{taxon}_A03_annotated.tbl"
         blank_tbl_path = f"data/checkpoints_dataprep/{taxon}_A03_blank.tbl"
@@ -172,7 +192,8 @@ rule classify_species:
         except IOError:
             raise Exception(f"Error reading file: {tbl_file_path}")
         
-        data['species'] = data['species'].str.rstrip('.')
+        data['species'] = data['species'].str.rstrip('.')  # here we have, for example: 'Nitzschia sp. pyKryTriq1'
+        print(data)
 
         # Make a subset of representative genomes, this can be seen by refseqCategory being not empty
         representative_genomes = data[data['refseqCategory'].notna()]
@@ -219,9 +240,10 @@ rule prepare_download_assemblies_from_ncbi:
     output:
         download_script = "data/checkpoints_dataprep/{taxon}_A04_download.sh"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     run:
         # Read the annotated table to get accessions and species names
         print(input.blank_tbl_file)
@@ -233,8 +255,8 @@ rule prepare_download_assemblies_from_ncbi:
                 command = ""
                 for index, row in df_blank.iterrows():
                     # take the row["species"] field and replace all spaces by _, otherwise remove all special characters
-                    species = row["species"].replace(" ", "_")
-                    species = re.sub(r'[/?,.*&\\;]+', '', species)
+                    species = row["species"].replace(" ", "_").replace('.', '')
+                    #species = re.sub(r'[/?,.*&\\;]+', '', species) # example: 'Nitzschia_sp_pyKryTriq1'
                     command += f"cd data/species; "
                     command += f"mkdir {species}; cd {species};"
                     command += f"datasets download genome accession {row['accession']} --filename {row['accession']}_assembly.zip; "
@@ -244,7 +266,7 @@ rule prepare_download_assemblies_from_ncbi:
                     command += f"rm -rf ncbi_dataset {row['accession']}_assembly.zip; cd ../../..;\n"
                 for index, row in df_anno.iterrows():
                     # take the row["species"] field and replace all spaces by _, otherwise remove all special characters
-                    species = row["species"].replace(" ", "_")
+                    species = row["species"].replace(" ", "_").replace('.', '')
                     species = re.sub(r'[/?,.*&\\;]+', '', species)
                     command += f"cd data/species; "
                     command += f"mkdir {species}; cd {species};"
@@ -271,9 +293,10 @@ rule execute_genome_download_commands:
     output:
         done = "data/checkpoints_dataprep/{taxon}_A04_download.done"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://katharinahoff/varus-notebook:v0.0.5"
     shell:
@@ -294,9 +317,10 @@ rule prepare_legacy_protein_download:
     output:
         legacy_proteins_script = "data/checkpoints_dataprep/{taxon}_A05_legacy_proteins_prep.sh"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     run:
         df_all = pd.read_csv(input.all_tbl, sep="\t", usecols=['accession', 'species', 'proteins', 'contigN50'])
         # drop all rows that do not have a number >1000 in proteins column
@@ -313,9 +337,9 @@ rule prepare_legacy_protein_download:
                 for index, row in df_blank.iterrows():
                     if row['species'] in df_all['species'].values:
                         if row['accession'] != df_all[df_all['species'] == row['species']]['accession'].values[0]:
-                            command += f"if [ ! -f data/species/{row['species'].replace(' ', '_')}/prot_legacy/proteins.faa ] && [ ! -f data/species/{row['species'].replace(' ', '_')}/prot_legacy/proteins.fa ]; then\n"
-                            command += f"\tmkdir data/species/{row['species'].replace(' ', '_')}/prot_legacy;\n"
-                            command += f"\tcd data/species/{row['species'].replace(' ', '_')}/prot_legacy;\n"
+                            command += f"if [ ! -f data/species/{row['species'].replace(' ', '_').replace('.', '')}/prot_legacy/proteins.faa ] && [ ! -f data/species/{row['species'].replace(' ', '_').replace('.', '')}/prot_legacy/proteins.fa ]; then\n"
+                            command += f"\tmkdir data/species/{row['species'].replace(' ', '_').replace('.', '')}/prot_legacy;\n"
+                            command += f"\tcd data/species/{row['species'].replace(' ', '_').replace('.', '')}/prot_legacy;\n"
                             command += f"\tdatasets download genome accession {df_all[df_all['species'] == row['species']]['accession'].values[0]} --filename {row['accession']}_legacy_proteins.zip --include protein;\n"
                             command += f"\tunzip -o {row['accession']}_legacy_proteins.zip;\n"
                             command += f"\tmv ncbi_dataset/data/{df_all[df_all['species'] == row['species']]['accession'].values[0]}/*.faa proteins.faa;\n"
@@ -332,9 +356,10 @@ rule execute_legacy_prot_download_commands:
     output:
         done = "data/checkpoints_dataprep/{taxon}_A06_legacy_proteins_download.done"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://katharinahoff/varus-notebook:v0.0.5"
     shell:
@@ -352,9 +377,10 @@ rule write_simplify_legacy_protein_headers_cmds:
     output:
         simplified_legacy_proteins = "data/checkpoints_dataprep/{taxon}_A07_simplify_legacy_proteins.sh"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     run:
         df_all = pd.read_csv(input.all_tbl, sep="\t", usecols=['accession', 'species', 'proteins', 'contigN50'])
         # drop all rows that do not have a number >1000 in proteins column
@@ -372,8 +398,8 @@ rule write_simplify_legacy_protein_headers_cmds:
                 for index, row in df_blank.iterrows():
                     if row['species'] in df_all['species'].values:
                         if row['accession'] != df_all[df_all['species'] == row['species']]['accession'].values[0]:
-                            command += f"if [ ! -f data/species/{row['species'].replace(' ', '_')}/prot_legacy/proteins.fa ]; then\n"
-                            command += f"\tcd data/species/{row['species'].replace(' ', '_')}/prot_legacy; "
+                            command += f"if [ ! -f data/species/{row['species'].replace(' ', '_').replace('.', '')}/prot_legacy/proteins.fa ]; then\n"
+                            command += f"\tcd data/species/{row['species'].replace(' ', '_').replace('.', '')}/prot_legacy; "
                             command += f"\tsimplifyFastaHeaders.pl proteins.faa prot_ proteins.fa header.map;"
                             command += f"\trm proteins.faa; cd ../../../..;\n"
                             command += f"fi\n"
@@ -388,9 +414,10 @@ rule execute_fix_headers_commands:
     output:
         done = "data/checkpoints_dataprep/{taxon}_A08_fixed_protein_headers.done"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:latest"
     shell:
@@ -410,16 +437,17 @@ rule shorten_genomic_fasta_headers:
     output:
         done = "data/checkpoints_dataprep/{taxon}_A09_shorten_genomic_headers.done"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     run:
         df_anno = pd.read_csv(input.annotated_tbl_path, sep="\t", usecols=['species']) # here also proteins
         df_blank = pd.read_csv(input.blank_tbl_path, sep="\t", usecols=['species'])
         # concatenate the species of df_anno to df_blank
         df_blank = pd.concat([df_anno, df_blank]) # here genome
         # build paths to genome files from df_anno species field, where the space must be replaced by underscore
-        genome_files = [f"data/species/{species.replace(' ', '_')}/genome/genome.fa" for species in df_blank['species']]
+        genome_files = [f"data/species/{species.replace(' ', '_').replace('.', '')}/genome/genome.fa" for species in df_blank['species']]
         # move all these files to genome.fa_original
         for genome_file in genome_files:
             shutil.move(genome_file, genome_file + "_original")
@@ -442,7 +470,7 @@ rule shorten_genomic_fasta_headers:
 
             
         # build paths to protein files from df_anno species field, where the space must be replaced by underscore
-        protein_files = [f"data/species/{species.replace(' ', '_')}/prot/protein.faa" for species in df_anno['species']]
+        protein_files = [f"data/species/{species.replace(' ', '_').replace('.', '')}/prot/protein.faa" for species in df_anno['species']]
         # move all these files to protein.faa_original
         for protein_file in protein_files:
             shutil.move(protein_file, protein_file + "_original")
@@ -455,7 +483,7 @@ rule shorten_genomic_fasta_headers:
                     with open(protein_file, 'w') as new_protein_handle:
                         for line in protein_handle:
                             if line.startswith(">"):
-                                new_protein_handle.write(line.split(" ")[0].replace(".", "_") + "\n")
+                                new_protein_handle.write(line.split(" ")[0].replace(".", "_").replace('.', '_') + "\n")
                             else:
                                 new_protein_handle.write(line)
             except IOError:
@@ -481,16 +509,17 @@ rule delete_ncbi_readme:
     output:
         done = "data/checkpoints_dataprep/{taxon}_A10_delete_ncbi_readme.done"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     run:
         # get all README files for a taxon
         df_anno = pd.read_csv(input.annotated_tbl_path, sep="\t", usecols=['species']) # here also proteins
         df_blank = pd.read_csv(input.blank_tbl_path, sep="\t", usecols=['species'])
         # concatenate the species of df_anno to df_blank
         df = pd.concat([df_anno, df_blank])
-        genome_files = [f"data/species/{species.replace(' ', '_')}/README.md" for species in df_blank['species']]
+        genome_files = [f"data/species/{species.replace(' ', '_').replace('.', '')}/README.md" for species in df_blank['species']]
         for genome_file in genome_files:
             # if file exists
             if os.path.exists(genome_file):
@@ -510,9 +539,10 @@ rule find_organelles:
     output:
         done = "data/checkpoints_dataprep/{taxon}_A09_b.done"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     shell:
         """
         logfile="data/checkpoints_dataprep/{params.taxon}_A09_b.log"
@@ -544,9 +574,10 @@ rule select_pseudo:
     output:
         done = "data/checkpoints_dataprep/{taxon}_A11_select_pseudo.done"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon, 
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:devel"
     shell:
@@ -558,12 +589,14 @@ rule select_pseudo:
         declare -a species_list
         # Read from the input file and modify the species names
         while IFS=$'\t' read -r accession species others; do
+            echo "Processing species: $species" >> $logfile
             if [[ "$accession" == "accession" ]]; then
                 continue
             fi
             # Replace spaces with underscores in the species name
-            modified_species="${{species// /_}}"
-            species_list+=("$modified_species")
+            # modified_species="${{species// /_}}"
+            # species_list+=("$modified_species")
+            species_list+=("$species")
         done < {input.annotated_tbl}
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile
@@ -605,9 +638,10 @@ rule add_introns:
     output:
         done = "data/checkpoints_dataprep/{taxon}_A12_add_introns.done"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon, 
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://quay.io/biocontainers/agat:1.0.0--pl5321hdfd78af_0"
     shell:
@@ -622,9 +656,7 @@ rule add_introns:
             if [[ "$accession" == "accession" ]]; then
                 continue
             fi
-            # Replace spaces with underscores in the species name
-            modified_species="${{species// /_}}"
-            species_list+=("$modified_species")
+            species_list+=("$species")
         done < {input.annotated_tbl}
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile
@@ -646,9 +678,10 @@ rule gff3_to_gtf:
     output:
         done = "data/checkpoints_dataprep/{taxon}_A13_gtf.done"
     params:
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon, 
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:devel"
     shell:
@@ -663,9 +696,7 @@ rule gff3_to_gtf:
             if [[ "$accession" == "accession" ]]; then
                 continue
             fi
-            # Replace spaces with underscores in the species name
-            modified_species="${{species// /_}}"
-            species_list+=("$modified_species")
+             species_list+=("$species")
         done < {input.annotated_tbl}
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile
@@ -675,6 +706,6 @@ rule gff3_to_gtf:
             gff3_to_gtf.pl data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/annot.gtf &>> $logfile
             echo "rm data/species/${{species}}/annot/list.tbl data/species/${{species}}/annot/annot.gff3 data/species/${{species}}/annot/annot_tmp.gff3" >> $logfile
             rm data/species/${{species}}/annot/list.tbl data/species/${{species}}/annot/annot.gff3 data/species/${{species}}/annot/annot_tmp.gff3 data/species/${{species}}/annot/tmp2_annot.gff3
-        done
+        done 
         touch {output.done}
         """

@@ -1,3 +1,10 @@
+def format_taxon(taxon): # formatted_taxon: Nitzschia sp. pyKryTriq1, Cyclotella cryptica
+    if "_sp_" in taxon:
+        return taxon.replace("_sp_", " sp. ")
+    else:
+        return taxon.replace("_", " ")
+
+
 # Rule: retrieve_rnaseq_info_from_sra
 # Purpose:
 #   This rule automates the retrieval of RNA sequencing (RNA-seq) information for specified taxa
@@ -31,11 +38,12 @@ rule retrieve_rnaseq_info_from_sra:
     output:
         fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B01_rnaseq_for_fastqdump.lst",
     params:
-        taxon = lambda wildcards: wildcards.taxon,
+        taxon = lambda wildcards: wildcards.taxon,# taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
         email = config['ESEARCH']['email'],
-        nlibs = int(config['FASTERQDUMP']['number_of_libraries'])
+        nlibs = int(config['FASTERQDUMP']['number_of_libraries']),  
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:latest"
     shell:
@@ -118,9 +126,10 @@ rule run_download_fastq:
         done = "data/checkpoints_dataprep/{taxon}_B03_fastqdump.done"
     params:
         threads = 10,
-        taxon = lambda wildcards: wildcards.taxon
+        taxon = lambda wildcards: wildcards.taxon,  # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://katharinahoff/varus-notebook:v0.0.5"
     threads: 12
@@ -181,9 +190,10 @@ rule run_hisat2_index:
         done = "data/checkpoints_dataprep/{taxon}_B04_hisat2_index.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
+        threads = config['SLURM_ARGS']['cpus_per_task'],  
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -223,10 +233,11 @@ rule run_hisat2:
         done = "data/checkpoints_dataprep/{taxon}_B05_hisat2.done",
         log = "data/checkpoints_dataprep/{taxon}_B05_hisat2.log"
     params:
-        taxon=lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
+        taxon=lambda wildcards: wildcards.taxon, # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        threads = config['SLURM_ARGS']['cpus_per_task'],
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -276,10 +287,11 @@ rule remove_bad_libraries:
         done = "data/checkpoints_dataprep/{taxon}_B06_remove_bad_libraries.done",
         new_fastqdump_lst = "data/checkpoints_dataprep/{taxon}_B06_rnaseq_for_fastqdump.lst",
     params:
-        taxon=lambda wildcards: wildcards.taxon,
+        taxon=lambda wildcards: wildcards.taxon, # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
         mapping_threshold = float(config['FASTERQDUMP']['minimial_aligned_reads_percent']),
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     shell:
         '''
         log=data/checkpoints_dataprep/{params.taxon}_B06_remove_bad_libraries.log
@@ -301,9 +313,10 @@ rule run_sam_to_bam:
         done = "data/checkpoints_dataprep/{taxon}_B06_sam2bam.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
+        threads = config['SLURM_ARGS']['cpus_per_task'], 
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -349,9 +362,10 @@ rule run_samtools_sort_single:
         done = "data/checkpoints_dataprep/{taxon}_B07_samtools_sort_single.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
+        threads = config['SLURM_ARGS']['cpus_per_task'], 
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -397,9 +411,10 @@ rule run_samtools_index_single:
         done = "data/checkpoints_dataprep/{taxon}_B08_samtools_index_single.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
+        threads = config['SLURM_ARGS']['cpus_per_task'], 
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -442,9 +457,10 @@ rule cleanup_sam_bam_unsorted_files:
         done = "data/checkpoints_dataprep/{taxon}_B09_cleanup_sam_bam_unsorted.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
+        threads = config['SLURM_ARGS']['cpus_per_task'], 
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
@@ -493,9 +509,10 @@ rule run_merge_bam:
         done = "data/checkpoints_dataprep/{taxon}_B10_merge_bam.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
+        threads = config['SLURM_ARGS']['cpus_per_task'], 
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -549,9 +566,10 @@ rule cleanup_sorted_bam_files:
         done = "data/checkpoints_dataprep/{taxon}_B11_cleanup_sorted_bam.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
+        threads = config['SLURM_ARGS']['cpus_per_task'], 
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     shell:
         """
         export APPTAINER_BIND="${{PWD}}:${{PWD}}"; \
@@ -594,9 +612,10 @@ rule run_sort_merged_bam:
         done = "data/checkpoints_dataprep/{taxon}_B12_sort_merged_bam.done"
     params:
         taxon=lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
+        threads = config['SLURM_ARGS']['cpus_per_task'], 
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     singularity:
         "docker://teambraker/braker3:latest"
     threads: int(config['SLURM_ARGS']['cpus_per_task'])
@@ -631,10 +650,11 @@ rule cleanup_rnaseq:
     output:
         done = "data/checkpoints_dataprep/{taxon}_B13_cleanup_rnaseq.done"
     params:
-        taxon=lambda wildcards: wildcards.taxon,
-        threads = config['SLURM_ARGS']['cpus_per_task']
+        taxon=lambda wildcards: wildcards.taxon,# taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+        threads = config['SLURM_ARGS']['cpus_per_task'],  
+        formatted_taxon = lambda wildcards: format_taxon(wildcards.taxon) 
     wildcard_constraints:
-        taxon="[^_]+"
+        taxon = "[^ ]+"
     shell:
         """
         log="data/checkpoints_dataprep/{params.taxon}_B13_cleanup.log"

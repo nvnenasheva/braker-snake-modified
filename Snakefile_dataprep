@@ -38,12 +38,20 @@ localrules: all, \
 
 # Read the input CSV file to get taxon and odb partition names
 # Assuming the CSV file is tab-separated
-data = pd.read_csv(input_csv, header=None, sep=' ', names=['taxa', 'odb_partition', 'busco_db'])
+data = pd.read_csv(input_csv, header=None, sep=',', names=['taxa', 'odb_partition', 'busco_db'])
 
 # Create separate lists for taxa and unique odb partitions
-taxa_list = data['taxa'].tolist()
+taxa_list = data['taxa'].tolist()  # raw values: Nitzschia sp. pyKryTriq1, Cyclotella cryptica
 odb_list = data['odb_partition'].tolist()
 unique_odb_partitions = data['odb_partition'].unique().tolist()
+
+def format_taxon(taxon):
+    return taxon.replace(" ", "_").replace(".", "")
+
+# Create a list of formatted taxon names
+formatted_taxa_list = [format_taxon(taxon) for taxon in taxa_list] # values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica
+
+
 
 # Create the checkpoint file directory for both workflows if it does not exist yet
 checkptdir = "data/checkpoints_dataprep"
@@ -60,4 +68,4 @@ include: "rules_dataprep/aggregate.smk"
 rule all:
     input:
         expand(config['BRAKER']['orthodb_path'] + "/{odb_partition}.fa", odb_partition=unique_odb_partitions),
-        expand("data/checkpoints_dataprep/{taxon}_C01_data.csv", taxon=taxa_list)
+        expand("data/checkpoints_dataprep/{taxon}_C01_data.csv", taxon=formatted_taxa_list) # taxon values: Nitzschia_sp_pyKryTriq1, Cyclotella_cryptica

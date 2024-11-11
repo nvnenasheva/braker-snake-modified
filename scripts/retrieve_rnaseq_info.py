@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 from Bio import Entrez
 import pandas as pd
 # generate a seed for consistent random sampling
@@ -35,7 +36,11 @@ def search_sra(species_name, email):
     Entrez.email = email  # Set the email for NCBI access
 
     # Define the search query, we are on purpose not searching for field species name because a lot of diatom data comes from mixed cultures with bacteria
-    query = f'"{species_name}" AND "transcriptomic"[Source] AND "Illumina"[Platform] AND "PAIRED"[Layout] AND PolyA'
+    if '_sp_' in species_name:
+        print(species_name)
+        query = treat_sp(species_name)
+    else:
+        query = f'"{species_name}" AND "transcriptomic"[Source] AND "Illumina"[Platform] AND "PAIRED"[Layout] AND PolyA'
 
     # Use Entrez.esearch to search SRA
     handle = Entrez.esearch(db="sra", term=query)
@@ -66,10 +71,24 @@ def search_sra(species_name, email):
         run_info = [x for x in run_info if x]
     return record['Count'], run_info
 
+def treat_sp(string):
+    if "_sp_" in string:
+        # Split the string at '_sp_' and take the part after it
+        strain_extension = string.split("_sp_")[-1].strip()
+        logging.debug(f"Extracted strain extension '{strain_extension}' from '{string}'")
+        string = strain_extension
+    return string
+
 def main(args):
     # Read species from args.species_table with pandas to get species names
     species_table = pd.read_csv(args.species_tables, sep='\t')
+    logging.info(f"Read species table from '{args.species_tables}'")
     species_list = species_table['species'].tolist()
+    logging.debug(f"Original species list: {species_list}")
+    species_list = treat_sp(species_list)
+    print(species_list)
+    logging.debug(f"Modified species list: {species_list}")
+
     # Search SRA for each species
     all_data = {}
     for species in species_list:
@@ -80,6 +99,7 @@ def main(args):
         # store only the first n accessions in accessions_list
         if len(accessions_list) > int(args.n_threshold):
             accessions_list = accessions_list[:int(args.n_threshold)]
+            logging.debug(f"Trimmed accessions list for '{species}' to {args.n_threshold} entries")
         all_data[species] = {'nRecords': nRecords, 'accessions': accessions_list}
 
 
@@ -98,7 +118,8 @@ def main(args):
                         else:
                             fastq_list.write(f"{acc}\n")
                 else:
-                    print("Info: There is no RNA-Seq data for species " + species + " in SRA")
+                    logging.warning(f"No RNA-Seq data for species '{species}' in SRA")
+                    #print("Info: There is no RNA-Seq data for species " + species + " in SRA")
 
     except IOError:
         print("Could not write to file " + args.fastqdump_out_list)

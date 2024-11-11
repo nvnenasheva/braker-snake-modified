@@ -23,9 +23,10 @@ cmd = ""
 if pd.isna(row['annotation_file'].values[0]):
     cmd += 'braker.pl --genome=' + row['genome_file'].values[0] + ' '
     cmd += '--prot_seq=' + row['odb_file'].values[0]
+    # ignore legacy_prot_file
     # if legacy_prot_file is not empty
-    if not(pd.isna(row['legacy_prot_file'].values[0])):
-        cmd += ',' + row['legacy_prot_file'].values[0]
+    #if not(pd.isna(row['legacy_prot_file'].values[0])):
+    #    cmd += ',' + row['legacy_prot_file'].values[0]
     # if rnaseq_file is not empty
     if not(pd.isna(row['rnaseq_file'].values[0])):
         cmd += ' --bam=' + row['rnaseq_file'].values[0]
