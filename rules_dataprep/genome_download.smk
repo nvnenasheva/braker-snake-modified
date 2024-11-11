@@ -705,7 +705,13 @@ rule gff3_to_gtf:
             if [[ "$accession" == "accession" ]]; then
                 continue
             fi
-             species_list+=("$species")
+            # Replace spaces with underscores in the species name
+            if [[ "$species" == *" "* ]]; then
+                modified_species="${{species// /_}}"
+                species_list+=("$modified_species")
+            else
+                species_list+=("$species")
+            fi
         done < {input.annotated_tbl}
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile

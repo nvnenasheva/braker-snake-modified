@@ -16,21 +16,26 @@ rule download_orthodb_partitions:
             mkdir -p {params.orthodb_path}
         fi
         # Download the main partition
-        curl -o {params.orthodb_path}/{wildcards.odb_partition}.fa.gz {params.url}
-        # Check if the partition is stramenopiles and handle accordingly
-        if [ "{wildcards.odb_partition}" = "Stramenopiles" ]; then
-            # Download the Viridiplantae partition
-            curl -o {params.orthodb_path}/Viridiplantae.fa.gz {params.special_url}
-            # Concatenate Stramenopiles and Viridiplantae
-            zcat {params.orthodb_path}/Stramenopiles.fa.gz {params.orthodb_path}/Viridiplantae.fa.gz > {params.orthodb_path}/Stramenopiles_combined.fa 2> log
-            # Move the combined file to the original Stramenopiles output, replacing it
-            mv {params.orthodb_path}/Stramenopiles_combined.fa {output.fasta}
-            # Clean up the Viridiplantae file
-            rm {params.orthodb_path}/Viridiplantae.fa.gz {params.orthodb_path}/Stramenopiles.fa.gz
-        else
-            # Move the single partition to the final output
-            gunzip {params.orthodb_path}/{wildcards.odb_partition}.fa.gz
-            mv {params.orthodb_path}/{wildcards.odb_partition}.fa {output.fasta}
+        if [ ! -f {params.orthodb_path}/{wildcards.odb_partition}.fa ]; then
+
+            curl -o {params.orthodb_path}/{wildcards.odb_partition}.fa.gz {params.url}
+            # Check if the partition is stramenopiles and handle accordingly
+            if [ "{wildcards.odb_partition}" = "Stramenopiles" ]; then
+                # Download the Viridiplantae partition
+                curl -o {params.orthodb_path}/Viridiplantae.fa.gz {params.special_url}
+                # Concatenate Stramenopiles and Viridiplantae
+                zcat {params.orthodb_path}/Stramenopiles.fa.gz {params.orthodb_path}/Viridiplantae.fa.gz > {params.orthodb_path}/Stramenopiles_combined.fa 2> log
+                # Move the combined file to the original Stramenopiles output, replacing it
+                mv {params.orthodb_path}/Stramenopiles_combined.fa {output.fasta}
+                # Clean up the Viridiplantae file
+                rm {params.orthodb_path}/Viridiplantae.fa.gz {params.orthodb_path}/Stramenopiles.fa.gz
+            else
+                # Move the single partition to the final output
+                gunzip {params.orthodb_path}/{wildcards.odb_partition}.fa.gz
+                mv {params.orthodb_path}/{wildcards.odb_partition}.fa {output.fasta}
+            fi
+        else:
+            echo "OrthoDB partition {wildcards.odb_partition}.fa already downloaded"
         fi
         """
 
