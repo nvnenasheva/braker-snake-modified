@@ -594,9 +594,15 @@ rule select_pseudo:
                 continue
             fi
             # Replace spaces with underscores in the species name
+            if [[ "$species" == *" "* ]]; then
+                modified_species="${{species// /_}}"
+                species_list+=("$modified_species")
+            else
+                species_list+=("$species")
+            fi
             # modified_species="${{species// /_}}"
             # species_list+=("$modified_species")
-            species_list+=("$species")
+            # species_list+=("$species") 
         done < {input.annotated_tbl}
         for species in "${{species_list[@]}}"; do
             echo "Processing species: ${{species}}" >> $logfile
