@@ -32,9 +32,9 @@ rule download_orthodb_partitions:
             else
                 # Move the single partition to the final output
                 gunzip {params.orthodb_path}/{wildcards.odb_partition}.fa.gz
-                mv {params.orthodb_path}/{wildcards.odb_partition}.fa {output.fasta}
+                # mv {params.orthodb_path}/{wildcards.odb_partition}.fa {output.fasta}
             fi
-        else:
+        else
             echo "OrthoDB partition {wildcards.odb_partition}.fa already downloaded"
         fi
         """

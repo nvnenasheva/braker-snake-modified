@@ -552,8 +552,13 @@ rule find_organelles:
             if [[ "$accession" == "accession" ]]; then
                 continue
             fi
-            modified_species="${{species// /_}}"
-            species_list+=("$modified_species")
+            # Replace spaces with underscores in the species name
+            if [[ "$species" == *" "* ]]; then
+                modified_species="${{species// /_}}"
+                species_list+=("$modified_species")
+            else
+                species_list+=("$species")
+            fi
         done < {input.annotated_tbl_path}
         for species in "${{species_list[@]}}"; do
             bash scripts/find_organelles.sh data/species/${{species}}/genome/genome.fa > data/species/${{species}}/genome/organelles.lst
