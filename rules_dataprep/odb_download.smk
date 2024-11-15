@@ -6,9 +6,9 @@ rule download_orthodb_partitions:
     output:
         fasta=f"{config['BRAKER']['orthodb_path']}/{{odb_partition}}.fa"
     params:
-        url=lambda wildcards: f"https://bioinf.uni-greifswald.de/bioinf/partitioned_odb11/{wildcards.odb_partition}.fa.gz",
+        url=lambda wildcards: f"https://bioinf.uni-greifswald.de/bioinf/partitioned_odb12/{wildcards.odb_partition}.fa.gz",
         orthodb_path=lambda wildcards: config['BRAKER']['orthodb_path'],
-        special_url="https://bioinf.uni-greifswald.de/bioinf/partitioned_odb11/Viridiplantae.fa.gz"
+        special_url="https://bioinf.uni-greifswald.de/bioinf/partitioned_odb12/Viridiplantae.fa.gz"
     shell:
         """
         # check if directory exists
@@ -20,7 +20,7 @@ rule download_orthodb_partitions:
 
             curl -o {params.orthodb_path}/{wildcards.odb_partition}.fa.gz {params.url}
             # Check if the partition is stramenopiles and handle accordingly
-            if [ "{wildcards.odb_partition}" = "Stramenopiles" ]; then
+            if [ "{wildcards.odb_partition}" = "Stramenopiles" ] || [ "{wildcards.odb_partition}" = "Alveolata" ]; then
                 # Download the Viridiplantae partition
                 curl -o {params.orthodb_path}/Viridiplantae.fa.gz {params.special_url}
                 # Concatenate Stramenopiles and Viridiplantae
@@ -38,5 +38,7 @@ rule download_orthodb_partitions:
             echo "OrthoDB partition {wildcards.odb_partition}.fa already downloaded"
         fi
         """
+
+
 
 
